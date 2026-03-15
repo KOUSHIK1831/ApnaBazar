@@ -27,6 +27,19 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
     const files = Array.from(fileList);
     if (files.length === 0) return;
 
+    // Check file sizes (limit to 5MB per file)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    const oversizedFiles = files.filter(f => f.size > MAX_FILE_SIZE);
+    
+    if (oversizedFiles.length > 0) {
+      toast({ 
+        title: 'File too large', 
+        description: `Please keep images under 5MB. ${oversizedFiles.length} file(s) exceeded the limit.`, 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     setFileCount(files.length);
     setProcessedCount(0);
     setStep('uploading');
@@ -187,9 +200,9 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
         <div className="w-14 h-14 bg-green-50 dark:bg-green-500/10 rounded-full flex items-center justify-center mb-4">
           <CheckCircle2 className="w-7 h-7 text-green-600" />
         </div>
-        <h3 className="font-semibold text-foreground mb-1">Digitization Complete</h3>
-        <p className="text-sm text-muted-foreground mb-6">{fileCount} files processed successfully</p>
-        <Button variant="outline" onClick={() => { setStep('idle'); setOverridePrice(''); }} className="border-border/50">Upload More</Button>
+        <h3 className="font-semibold text-foreground mb-1">{t('upload.complete')}</h3>
+        <p className="text-sm text-muted-foreground mb-6">{fileCount} {t('upload.filesProcessed')}</p>
+        <Button variant="outline" onClick={() => { setStep('idle'); setOverridePrice(''); }} className="border-border/50">{t('upload.uploadMore')}</Button>
       </div>
     );
   }
@@ -199,10 +212,10 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
       <div className="border border-border/50 rounded-xl p-12 flex flex-col items-center bg-card shadow-surface">
         <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
         <h3 className="font-semibold text-foreground mb-1">
-          {step === 'uploading' ? t('upload.processing') : 'AI is digitizing your catalog...'}
+          {step === 'uploading' ? t('upload.processing') : t('upload.aiProcessing')}
         </h3>
         <p className="text-sm text-muted-foreground">
-          {step === 'processing' && `${processedCount} / ${fileCount} files processed`}
+          {step === 'processing' && `${processedCount} / ${fileCount} ${t('upload.processingProgress')}`}
         </p>
         <div className="mt-4 w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden">
           <div
@@ -218,9 +231,9 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
     return (
       <div className="border border-destructive/30 rounded-xl p-12 flex flex-col items-center bg-card shadow-surface animate-fade-in">
         <XCircle className="w-8 h-8 text-destructive mb-4" />
-        <h3 className="font-semibold text-foreground mb-1">Processing Failed</h3>
-        <p className="text-sm text-muted-foreground mb-6">Some files could not be processed</p>
-        <Button variant="outline" onClick={() => setStep('idle')} className="border-border/50">Try Again</Button>
+        <h3 className="font-semibold text-foreground mb-1">{t('upload.processingFailed')}</h3>
+        <p className="text-sm text-muted-foreground mb-6">{t('upload.someFilesFailed')}</p>
+        <Button variant="outline" onClick={() => setStep('idle')} className="border-border/50">{t('upload.tryAgain')}</Button>
       </div>
     );
   }

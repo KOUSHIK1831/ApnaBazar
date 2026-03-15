@@ -81,7 +81,7 @@ export default function Dashboard() {
               const result = await createSeller(data);
               if (result?.error) {
                 toast({
-                  title: 'Error creating store',
+                  title: t('setup.errorCreating'),
                   description: String(result.error.message || result.error),
                   variant: 'destructive',
                 });

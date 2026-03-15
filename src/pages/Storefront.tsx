@@ -103,7 +103,7 @@ function StorefrontContent() {
 
       if (error) {
         console.error('Order error:', error);
-        toast({ title: 'Order failed', description: 'Could not place order. Please try again.', variant: 'destructive' });
+        toast({ title: t('storefront.orderFailed'), description: t('storefront.orderFailedDesc'), variant: 'destructive' });
         return;
       }
 
@@ -112,16 +112,30 @@ function StorefrontContent() {
       toast({ title: t('storefront.orderPlaced'), description: t('storefront.orderSent') });
     } catch (err) {
       console.error(err);
-      toast({ title: 'Error', description: 'Something went wrong.', variant: 'destructive' });
+      toast({ title: t('common.error'), description: t('storefront.orderFailedDesc'), variant: 'destructive' });
     }
   };
 
   // Kept for when backend order placement is re-enabled.
   const handleAuthSuccess = () => {
     setShowAuth(false);
-    if (pendingProduct) {
-      setTimeout(() => placeOrder(pendingProduct), 500);
+  };
+
+  // Automatically place order once user is authenticated
+  useEffect(() => {
+    if (user && pendingProduct) {
+      placeOrder(pendingProduct);
       setPendingProduct(null);
+    }
+  }, [user, pendingProduct]);
+
+  const handleContact = () => {
+    if (seller?.contact_number) {
+      window.open(`tel:${seller.contact_number}`, '_self');
+    } else if (seller?.phone) {
+      window.open(`tel:${seller.phone}`, '_self');
+    } else {
+      toast({ title: t('storefront.contactUnavailable'), description: t('storefront.contactUnavailableDesc') });
     }
   };
 
@@ -310,7 +324,7 @@ function StorefrontContent() {
                       className="flex-1 bg-gradient-brand hover:opacity-90 transition-opacity"
                       disabled
                     >
-                      <ShoppingBag className="w-3.5 h-3.5 mr-1.5" /> Coming Soon
+                      <ShoppingBag className="w-3.5 h-3.5 mr-1.5" /> {t('storefront.orderNow')}
                     </Button>
                     <Button
                       size="sm"

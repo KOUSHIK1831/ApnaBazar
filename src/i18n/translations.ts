@@ -24,9 +24,12 @@ const translations = {
     te: 'AI తో మీ దుస్తుల వ్యాపారాన్ని డిజిటల్ చేయండి. ప్రోడక్ట్ ఫోటోలు అప్‌లోడ్ చేయండి, మా AI ఏజెంట్ మీ ఆన్‌లైన్ కేటలాగ్‌ను సెకన్లలో తయారు చేస్తుంది.',
     hi: 'AI से अपने कपड़ों के व्यापार को डिजिटल बनाएं। प्रोडक्ट फोटो अपलोड करें, और हमारा AI एजेंट सेकंडों में आपका ऑनलाइन कैटलॉग तैयार कर देगा।',
   },
+  'landing.hero.tag': { en: 'AI-Powered Seller Platform', te: 'AI-ఆధారిత విక్రేత ప్లాట్‌ఫారమ్', hi: 'AI-संचालित विक्रेता मंच' },
   'landing.hero.cta': { en: 'Start Selling Online', te: 'ఆన్‌లైన్‌లో అమ్మకం ప్రారంభించండి', hi: 'ऑनलाइन बिक्री शुरू करें' },
+  'landing.hero.demo': { en: 'View Demo Store', te: 'డెమో స్టోర్ చూడండి', hi: 'डेमो स्टोर देखें' },
   'landing.hero.secondaryCta': { en: 'Already have an account?', te: 'ఇప్పటికే ఖాతా ఉందా?', hi: 'पहले से अकाउंट है?' },
   'landing.features.title': { en: 'Everything You Need to Go Digital', te: 'డిజిటల్ అవ్వడానికి మీకు కావలసినవన్నీ', hi: 'डिजिटल होने के लिए सब कुछ' },
+  'landing.features.subtitle': { en: 'From uploading photos to a live storefront — we handle the heavy lifting with AI', te: 'ఫోటోలు అప్‌లోడ్ చేయడం నుండి లైవ్ స్టోర్‌ఫ్రంట్ వరకు — AI తో మందపాటి పనులను మేము చూసుకుంటాము', hi: 'फोटो अपलोड करने से लेकर लाइव स्टोरफ्रंट तक — हम AI के साथ भारी काम संभालते हैं' },
   'landing.features.upload.title': { en: 'Smart Upload', te: 'స్మార్ట్ అప్‌లోడ్', hi: 'स्मार्ट अपलोड' },
   'landing.features.upload.desc': {
     en: 'Simply photograph your products or upload price lists. Our system handles the rest.',
@@ -45,6 +48,9 @@ const translations = {
     te: 'అందమైన, షేర్ చేయగల ఆన్‌లైన్ స్టోర్ పొందండి, కస్టమర్లు బ్రౌజ్ చేసి ఆర్డర్ చేయవచ్చు.',
     hi: 'एक खूबसूरत, शेयर करने योग्य ऑनलाइन स्टोर पाएं जहां ग्राहक ब्राउज़ और ऑर्डर कर सकते हैं।',
   },
+  'landing.trust.secure': { en: 'Secure & Private', te: 'సురక్షితమైనవి & ప్రైవేట్', hi: 'सुरक्षित और निजी' },
+  'landing.trust.setup': { en: 'Setup in 2 Minutes', te: '2 నిమిషాల్లో సెటప్ చేయండి', hi: '2 मिनट में सेटअप' },
+  'landing.trust.share': { en: 'Share Anywhere', te: 'ఎక్కడైనా షేర్ చేయండి', hi: 'कहीं भी शेयर करें' },
   'landing.footer': { en: 'Empowering local sellers to go digital', te: 'స్థానిక విక్రేతలను డిజిటల్ చేయడం', hi: 'लोकल विक्रेताओं को डिजिटल बनाना' },
 
   // ── Auth ──
@@ -79,6 +85,7 @@ const translations = {
   // ── Store Setup ──
   'setup.title': { en: 'Set Up Your Store', te: 'మీ స్టోర్ సెటప్ చేయండి', hi: 'अपना स्टोर सेट करें' },
   'setup.subtitle': { en: 'Tell us about your business to create your digital storefront', te: 'మీ డిజిటల్ స్టోర్ సృష్టించడానికి మీ వ్యాపారం గురించి చెప్పండి', hi: 'अपना डिजिटल स्टोर बनाने के लिए अपने व्यापार के बारे में बताएं' },
+  'setup.errorCreating': { en: 'Error creating store', te: 'స్టోర్ సృష్టించడంలో లోపం', hi: 'स्टोर बनाने में त्रुटि' },
   'setup.yourName': { en: 'Your Name', te: 'మీ పేరు', hi: 'आपका नाम' },
   'setup.contactNumber': { en: 'Contact Number', te: 'సంప్రదింపు నంబర్', hi: 'संपर्क नंबर' },
   'setup.storeName': { en: 'Store Name', te: 'స్టోర్ పేరు', hi: 'स्टोर का नाम' },
@@ -132,6 +139,14 @@ const translations = {
   'upload.processing': { en: 'Processing...', te: 'ప్రాసెసింగ్...', hi: 'प्रोसेसिंग...' },
   'upload.price': { en: 'Price (₹)', te: 'ధర (₹)', hi: 'कीमत (₹)' },
   'upload.digitize': { en: 'Digitize Products', te: 'ఉత్పత్తులను డిజిటైజ్ చేయి', hi: 'उत्पाद डिजिटाइज़ करें' },
+  'upload.complete': { en: 'Digitization Complete', te: 'డిజిటైజేషన్ పూర్తయింది', hi: 'डिजिटाइज़ेशन पूरा हुआ' },
+  'upload.filesProcessed': { en: 'files processed successfully', te: 'ఫైల్‌లు విజయవంతంగా ప్రాసెస్ చేయబడ్డాయి', hi: 'फ़ाइलें सफलतापूर्वक प्रोसेस की गईं' },
+  'upload.uploadMore': { en: 'Upload More', te: 'మరిన్ని అప్‌లోడ్ చేయండి', hi: 'और अपलोड करें' },
+  'upload.aiProcessing': { en: 'AI is digitizing your catalog...', te: 'AI మీ కేటలాగ్‌ను డిజిటైజ్ చేస్తోంది...', hi: 'AI आपके कैटलॉग को डिजिटाइज़ कर रहा है...' },
+  'upload.processingProgress': { en: 'files processed', te: 'ఫైల్‌లు ప్రాసెస్ చేయబడ్డాయి', hi: 'फ़ाइलें प्रोसेस की गईं' },
+  'upload.processingFailed': { en: 'Processing Failed', te: 'ప్రాసెసింగ్ విఫలమైంది', hi: 'प्रोसेसिंग विफल' },
+  'upload.someFilesFailed': { en: 'Some files could not be processed', te: 'కొన్ని ఫైల్‌లు ప్రాసెస్ చేయడం సాధ్యపడలేదు', hi: 'कुछ फ़ाइलों को प्रोसेस नहीं किया जा सका' },
+  'upload.tryAgain': { en: 'Try Again', te: 'మళ్ళీ ప్రయత్నించండి', hi: 'फिर से प्रयास करें' },
 
   // ── Product Card ──
   'product.edit': { en: 'Edit', te: 'సవరించు', hi: 'संपादित करें' },

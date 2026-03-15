@@ -45,7 +45,7 @@ export default function Index() {
           <div className="max-w-2xl animate-slide-up">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-semibold mb-6 animate-pulse-glow">
               <Sparkles className="w-3.5 h-3.5" />
-              AI-Powered Seller Platform
+              {t('landing.hero.tag')}
             </div>
             <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-[1.05] mb-6">
               {t('landing.hero.title')} <br className="hidden md:block" />
@@ -58,6 +58,9 @@ export default function Index() {
               <Button size="lg" onClick={() => navigate('/auth')} className="bg-gradient-brand hover:opacity-90 transition-opacity text-base px-8">
                 {t('landing.hero.cta')} <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
+              <Button size="lg" variant="outline" onClick={() => navigate('/auth')} className="border-border/50 text-base">
+                {t('landing.hero.demo')}
+              </Button>
             </div>
           </div>
         </div>
@@ -68,7 +71,7 @@ export default function Index() {
         <div className="max-w-6xl mx-auto px-6 py-20">
           <div className="text-center mb-14">
             <h2 className="text-3xl font-bold text-foreground mb-3">{t('landing.features.title')}</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">From uploading photos to a live storefront — we handle the heavy lifting with AI</p>
+            <p className="text-muted-foreground max-w-md mx-auto">{t('landing.features.subtitle')}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
@@ -116,9 +119,9 @@ export default function Index() {
         <div className="max-w-6xl mx-auto px-6 py-16">
           <div className="flex flex-col md:flex-row items-center justify-center gap-8 text-center">
             {[
-              { icon: Shield, label: 'Secure & Private' },
-              { icon: Zap, label: 'Setup in 2 Minutes' },
-              { icon: Globe, label: 'Share Anywhere' },
+              { icon: Shield, label: t('landing.trust.secure') },
+              { icon: Zap, label: t('landing.trust.setup') },
+              { icon: Globe, label: t('landing.trust.share') },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-2 text-muted-foreground">
                 <item.icon className="w-4 h-4" />
