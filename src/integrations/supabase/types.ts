@@ -49,6 +49,64 @@ export type Database = {
           },
         ]
       }
+      orders: {
+        Row: {
+          id: string
+          buyer_id: string
+          seller_id: string
+          product_id: string
+          quantity: number
+          status: string
+          buyer_name: string | null
+          buyer_phone: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          buyer_id: string
+          seller_id: string
+          product_id: string
+          quantity?: number
+          status?: string
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          buyer_id?: string
+          seller_id?: string
+          product_id?: string
+          quantity?: number
+          status?: string
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       products: {
         Row: {
           category: string | null
@@ -100,6 +158,9 @@ export type Database = {
           id: string
           location: string | null
           phone: string | null
+          contact_number: string | null
+          store_number: string | null
+          maps_url: string | null
           store_description: string | null
           store_name: string | null
           store_slug: string | null
@@ -111,6 +172,9 @@ export type Database = {
           id?: string
           location?: string | null
           phone?: string | null
+          contact_number?: string | null
+          store_number?: string | null
+          maps_url?: string | null
           store_description?: string | null
           store_name?: string | null
           store_slug?: string | null
@@ -122,6 +186,9 @@ export type Database = {
           id?: string
           location?: string | null
           phone?: string | null
+          contact_number?: string | null
+          store_number?: string | null
+          maps_url?: string | null
           store_description?: string | null
           store_name?: string | null
           store_slug?: string | null
