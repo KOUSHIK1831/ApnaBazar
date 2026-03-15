@@ -1,0 +1,4 @@
+project_id = "ucfdhntlnszfcowhkthy"
+
+[functions.digitize]
+verify_jwt = false
