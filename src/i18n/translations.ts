@@ -151,6 +151,21 @@ const translations = {
   'order.message': { en: 'Your order has been placed successfully.', te: 'మీ ఆర్డర్ విజయవంతంగా చేయబడింది.', hi: 'आपका ऑर्डर सफलतापूर्वक दे दिया गया है।' },
   'order.contactSeller': { en: 'Contact Seller', te: 'విక్రేతను సంప్రదించండి', hi: 'विक्रेता से संपर्क करें' },
   'order.close': { en: 'Close', te: 'మూసివేయి', hi: 'बंद करें' },
+
+  // ── Orders (Seller Dashboard) ──
+  'dashboard.tabs.orders': { en: 'Orders', te: 'ఆర్డర్లు', hi: 'ऑर्डर' },
+  'orders.title': { en: 'Manage Orders', te: 'ఆర్డర్ల నిర్వహణ', hi: 'ऑर्डर प्रबंधन' },
+  'orders.noOrders': { en: 'No orders yet.', te: 'ఇంకా ఆర్డర్లు లేవు.', hi: 'अभी कोई ऑर्डर नहीं है' },
+  'orders.customer': { en: 'Customer', te: 'కస్టమర్', hi: 'ग्राहक' },
+  'orders.product': { en: 'Product', te: 'ఉత్పత్తి', hi: 'उत्पाद' },
+  'orders.status': { en: 'Status', te: 'స్థితి', hi: 'स्थिति' },
+  'orders.date': { en: 'Date', te: 'తేదీ', hi: 'दिनांक' },
+  'orders.contact': { en: 'Contact', te: 'సంప్రదించండి', hi: 'संपर्क करें' },
+  'orders.whatsapp': { en: 'Chat on WhatsApp', te: 'WhatsApp లో చాట్ చేయండి', hi: 'WhatsApp पर चैट करें' },
+  'orders.status.pending': { en: 'Pending', te: 'పెండింగ్', hi: 'लंबित' },
+  'orders.status.confirmed': { en: 'Confirmed', te: 'నిర్ధారించబడింది', hi: 'कन्फ़र्म' },
+  'orders.status.completed': { en: 'Completed', te: 'పూర్తయింది', hi: 'पूरा' },
+  'orders.status.cancelled': { en: 'Cancelled', te: 'రద్దు చేయబడింది', hi: 'रद्द' },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

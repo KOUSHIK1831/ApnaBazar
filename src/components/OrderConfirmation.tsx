@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Phone, Store } from 'lucide-react';
+import { CheckCircle2, Phone, Store, MessageCircle } from 'lucide-react';
 
 interface OrderConfirmationProps {
   isOpen: boolean;
@@ -49,9 +49,24 @@ export default function OrderConfirmation({
           </div>
 
           {sellerContact && (
-            <div className="flex items-center justify-center gap-2 mb-6 text-sm text-muted-foreground">
-              <Phone className="w-4 h-4" />
-              <span>Contact seller: <span className="font-medium text-foreground">{sellerContact}</span></span>
+            <div className="flex flex-col gap-2 mb-6">
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Phone className="w-4 h-4" />
+                <span>Contact seller: <span className="font-medium text-foreground">{sellerContact}</span></span>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full bg-green-500/5 hover:bg-green-500/10 border-green-500/20 text-green-600 h-10"
+                onClick={() => {
+                  const cleanPhone = sellerContact.replace(/\D/g, '');
+                  const message = `Hi ${sellerName || 'Seller'}, I just placed an order for "${productTitle}" on ApnaBazar!`;
+                  window.open(`https://wa.me/${cleanPhone}/?text=${encodeURIComponent(message)}`, '_blank');
+                }}
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Chat on WhatsApp
+              </Button>
             </div>
           )}
 

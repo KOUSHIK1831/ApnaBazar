@@ -6,14 +6,15 @@ import UploadZone from '@/components/UploadZone';
 import ProductCard from '@/components/ProductCard';
 import StoreSetup from '@/components/StoreSetup';
 import StoreSettings from '@/components/StoreSettings';
+import Orders from '@/components/Orders';
 import { Button } from '@/components/ui/button';
-import { LogOut, ExternalLink, Package, Upload, Store, Settings, LayoutGrid, Copy, Check } from 'lucide-react';
+import { LogOut, ExternalLink, Package, Upload, Store, Settings, LayoutGrid, Copy, Check, ShoppingBag } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
-type Tab = 'products' | 'upload' | 'settings';
+type Tab = 'products' | 'orders' | 'upload' | 'settings';
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
@@ -23,12 +24,14 @@ export default function Dashboard() {
   const {
     seller,
     products,
+    orders,
     loading,
     fetchProducts,
     createSeller,
     updateSellerProfile,
     updateProduct,
     deleteProduct,
+    updateOrderStatus,
   } = useSeller();
   const [activeTab, setActiveTab] = useState<Tab>('products');
   const [copied, setCopied] = useState(false);
@@ -90,6 +93,7 @@ export default function Dashboard() {
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'products', label: t('dashboard.tabs.products'), icon: LayoutGrid },
+    { id: 'orders', label: t('dashboard.tabs.orders'), icon: ShoppingBag },
     { id: 'upload', label: t('dashboard.tabs.upload'), icon: Upload },
     { id: 'settings', label: t('dashboard.tabs.settings'), icon: Settings },
   ];
@@ -188,6 +192,11 @@ export default function Dashboard() {
             >
               <tab.icon className="w-4 h-4" />
               {tab.label}
+              {tab.id === 'orders' && orders.filter(o => o.status === 'pending').length > 0 && (
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
+                  {orders.filter(o => o.status === 'pending').length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -229,6 +238,13 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <Orders 
+              orders={orders} 
+              onUpdateStatus={updateOrderStatus} 
+            />
           )}
 
           {activeTab === 'upload' && (
