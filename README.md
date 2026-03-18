@@ -4,6 +4,8 @@
 
 > Built for the hackathon — empowering small retailers to go digital in under 2 minutes.
 
+Public URL - https://hackathon-cs.vercel.app
+
 ---
 
 ## ✨ Features
