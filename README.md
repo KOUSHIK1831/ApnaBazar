@@ -187,9 +187,9 @@ The app will be available at `http://localhost:5173`.
 
 The app supports three languages out of the box:
 
-- 🇬🇧 **English** (`en`)
-- 🇮🇳 **Hindi** (`hi`)
-- 🇮🇳 **Telugu** (`te`)
+-  **English** (`en`)
+-  **Hindi** (`hi`)
+-  **Telugu** (`te`)
 
 Users can switch languages using the **LanguageSwitcher** component in the navbar. Language preference is persisted in `localStorage`.
 
