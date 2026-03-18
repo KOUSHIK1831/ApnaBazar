@@ -56,9 +56,6 @@ export default function Index() {
               <Button size="lg" onClick={() => navigate('/auth')} className="bg-gradient-brand hover:opacity-90 transition-opacity text-base px-8">
                 {t('landing.hero.cta')} <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate('/auth')} className="border-border/50 text-base">
-                View Demo Store
-              </Button>
             </div>
           </div>
         </div>
