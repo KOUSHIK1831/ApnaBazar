@@ -38,11 +38,25 @@ export interface FileRecord {
   created_at: string;
 }
 
+export interface Order {
+  id: string;
+  buyer_id: string;
+  seller_id: string;
+  product_id: string;
+  quantity: number;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  buyer_name: string | null;
+  buyer_phone: string | null;
+  created_at: string;
+  product?: Product;
+}
+
 export function useSeller() {
   const { user } = useAuth();
   const [seller, setSeller] = useState<Seller | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [files, setFiles] = useState<FileRecord[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchSeller = useCallback(async () => {
@@ -74,6 +88,25 @@ export function useSeller() {
       .order('created_at', { ascending: false });
     setFiles(data || []);
   }, [seller]);
+
+  const fetchOrders = useCallback(async () => {
+    if (!seller) return;
+    const { data } = await supabase
+      .from('orders')
+      .select('*, product:products(*)')
+      .eq('seller_id', seller.id)
+      .order('created_at', { ascending: false });
+    setOrders(data || []);
+  }, [seller]);
+
+  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status })
+      .eq('id', orderId);
+    if (!error) await fetchOrders();
+    return { error };
+  };
 
   const createSeller = async (data: Partial<Seller>) => {
     if (!user) return { error: new Error('Not authenticated') };
@@ -161,20 +194,24 @@ export function useSeller() {
     if (seller) {
       fetchProducts();
       fetchFiles();
+      fetchOrders();
     }
-  }, [seller, fetchProducts, fetchFiles]);
+  }, [seller, fetchProducts, fetchFiles, fetchOrders]);
 
   return {
     seller,
     products,
     files,
+    orders,
     loading,
     fetchSeller,
     fetchProducts,
     fetchFiles,
+    fetchOrders,
     createSeller,
     updateSellerProfile,
     updateProduct,
     deleteProduct,
+    updateOrderStatus,
   };
 }
