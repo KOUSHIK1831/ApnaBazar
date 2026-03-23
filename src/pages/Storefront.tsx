@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Seller, Product } from '@/hooks/useSeller';
 import { useAuth } from '@/hooks/useAuth';
-import { AuthProvider } from '@/hooks/useAuth';
 import BuyerAuthModal from '@/components/BuyerAuthModal';
 import OrderConfirmation from '@/components/OrderConfirmation';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +12,7 @@ import { Store, MapPin, Phone, Hash, ShoppingBag, MessageCircle, ExternalLink } 
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import ThemeToggle from '@/components/ThemeToggle';
 
 function StorefrontContent() {
   const { slug } = useParams<{ slug: string }>();
@@ -170,7 +170,10 @@ function StorefrontContent() {
           </div>
           
           <div className="absolute top-6 right-6">
-            <LanguageSwitcher variant="compact" />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <LanguageSwitcher variant="compact" />
+            </div>
           </div>
 
           {seller?.store_description && (

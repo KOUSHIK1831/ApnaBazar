@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import ThemeToggle from '@/components/ThemeToggle';
 
 type Tab = 'products' | 'orders' | 'upload' | 'settings';
 
@@ -68,6 +69,7 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold text-foreground">ApnaBazar</h1>
             </div>
             <div className="flex items-center gap-4">
+              <ThemeToggle />
               <LanguageSwitcher />
               <Button variant="ghost" size="sm" onClick={signOut}>
                 <LogOut className="w-4 h-4 mr-2" />{t('common.signOut')}
@@ -113,6 +115,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <div className="hidden md:block mr-2">
               <LanguageSwitcher variant="compact" />
             </div>
