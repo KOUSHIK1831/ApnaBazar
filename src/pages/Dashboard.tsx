@@ -59,16 +59,16 @@ export default function Dashboard() {
 
   if (!seller?.store_name) {
     return (
-      <div className="min-h-screen bg-background p-6">
+      <div className="min-h-screen bg-background p-4 sm:p-6">
         <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
+          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-brand rounded-lg flex items-center justify-center">
                 <Store className="w-4 h-4 text-white" />
               </div>
               <h1 className="text-xl font-bold text-foreground">ApnaBazar</h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <ThemeToggle />
               <LanguageSwitcher />
               <Button variant="ghost" size="sm" onClick={signOut}>
@@ -104,46 +104,54 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-brand rounded-lg flex items-center justify-center">
-              <Store className="w-4 h-4 text-white" />
+        <div className="max-w-6xl mx-auto px-4 py-3 sm:px-6">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex items-center gap-3">
+                <div className="w-8 h-8 shrink-0 bg-gradient-brand rounded-lg flex items-center justify-center">
+                  <Store className="w-4 h-4 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-sm font-bold text-foreground leading-tight">ApnaBazar</h1>
+                  <p className="truncate text-[11px] text-muted-foreground leading-tight">{seller.store_name}</p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <ThemeToggle />
+                <LanguageSwitcher variant="compact" />
+                <Button variant="ghost" size="sm" onClick={signOut} title={t('common.signOut')} className="shrink-0">
+                  <LogOut className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             </div>
-            <div>
-              <h1 className="text-sm font-bold text-foreground leading-tight">ApnaBazar</h1>
-              <p className="text-[11px] text-muted-foreground leading-tight">{seller.store_name}</p>
+
+            <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 sm:pb-0">
+              <div className="flex w-max items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyStoreLink}
+                  className="shrink-0 border-border/50 text-xs"
+                >
+                  {copied ? <Check className="mr-1.5 w-3.5 h-3.5" /> : <Copy className="mr-1.5 w-3.5 h-3.5" />}
+                  <span>{copied ? t('dashboard.copied') : t('dashboard.copyLink')}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/store/${seller.store_slug}`)}
+                  className="shrink-0 border-border/50 text-xs"
+                >
+                  <ExternalLink className="mr-1.5 w-3.5 h-3.5" />
+                  <span>{t('dashboard.viewStore')}</span>
+                </Button>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <div className="hidden md:block mr-2">
-              <LanguageSwitcher variant="compact" />
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyStoreLink}
-              className="border-border/50 text-xs"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
-              {copied ? t('dashboard.copied') : t('dashboard.copyLink')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(`/store/${seller.store_slug}`)}
-              className="border-border/50 text-xs"
-            >
-              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />{t('dashboard.viewStore')}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={signOut} title={t('common.signOut')}>
-              <LogOut className="w-3.5 h-3.5" />
-            </Button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6">
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 animate-fade-in">
           <div className="border border-border/50 rounded-xl p-5 bg-card shadow-surface hover:shadow-surface-lg transition-shadow">
@@ -182,12 +190,13 @@ export default function Dashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-muted/50 rounded-xl p-1 w-fit">
+        <div className="-mx-4 mb-6 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <div className="flex w-max gap-1 rounded-xl bg-muted/50 p-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
                 activeTab === tab.id
                   ? 'bg-card text-foreground shadow-surface'
                   : 'text-muted-foreground hover:text-foreground'
@@ -202,6 +211,7 @@ export default function Dashboard() {
               )}
             </button>
           ))}
+          </div>
         </div>
 
         {/* Tab Content */}
@@ -210,9 +220,9 @@ export default function Dashboard() {
             <div>
               {products.length > 0 ? (
                 <>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 className="text-lg font-semibold text-foreground">{t('dashboard.catalog')} ({products.length})</h2>
-                    <Button size="sm" variant="outline" onClick={() => setActiveTab('upload')} className="border-border/50">
+                    <Button size="sm" variant="outline" onClick={() => setActiveTab('upload')} className="w-full border-border/50 sm:w-auto">
                       <Upload className="w-3.5 h-3.5 mr-1.5" />{t('dashboard.addProducts')}
                     </Button>
                   </div>
