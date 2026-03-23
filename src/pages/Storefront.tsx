@@ -57,6 +57,28 @@ function StorefrontContent() {
     load();
   }, [slug]);
 
+  const openWhatsAppChat = (message: string) => {
+    const contactNumber = seller?.contact_number || seller?.phone;
+    if (!contactNumber) {
+      toast({ title: t('storefront.contactUnavailable'), description: t('storefront.contactUnavailableDesc') });
+      return;
+    }
+
+    const cleanPhone = contactNumber.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  const handleWhatsAppChat = (product: Product) => {
+    openWhatsAppChat(
+      `Hi, I'm interested in ${product.title} from ${seller?.store_name || 'your store'}. The listed price is Rs. ${product.price}. Can you share more details?`
+    );
+  };
+
+  const handleSellerContact = () => {
+    openWhatsAppChat(`Hi, I'm interested in the products from ${seller?.store_name || 'your store'}. Can you share more details?`);
+  };
+
+  // Kept for when backend order placement is re-enabled.
   const handleOrder = async (product: Product) => {
     if (!user) {
       setPendingProduct(product);
@@ -66,6 +88,7 @@ function StorefrontContent() {
     await placeOrder(product);
   };
 
+  // Kept for when backend order placement is re-enabled.
   const placeOrder = async (product: Product) => {
     try {
       const { error } = await supabase.from('orders').insert({
@@ -93,22 +116,12 @@ function StorefrontContent() {
     }
   };
 
+  // Kept for when backend order placement is re-enabled.
   const handleAuthSuccess = () => {
     setShowAuth(false);
     if (pendingProduct) {
-      // Small delay to let auth state propagate
       setTimeout(() => placeOrder(pendingProduct), 500);
       setPendingProduct(null);
-    }
-  };
-
-  const handleContact = () => {
-    if (seller?.contact_number) {
-      window.open(`tel:${seller.contact_number}`, '_self');
-    } else if (seller?.phone) {
-      window.open(`tel:${seller.phone}`, '_self');
-    } else {
-      toast({ title: t('storefront.contactUnavailable'), description: t('storefront.contactUnavailableDesc') });
     }
   };
 
@@ -185,7 +198,7 @@ function StorefrontContent() {
                 size="sm"
                 variant="secondary"
                 className="bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-sm"
-                onClick={handleContact}
+                onClick={handleSellerContact}
               >
                 <Phone className="w-3.5 h-3.5 mr-1.5" /> {seller.contact_number || seller.phone}
               </Button>
@@ -295,19 +308,23 @@ function StorefrontContent() {
                     <Button
                       size="sm"
                       className="flex-1 bg-gradient-brand hover:opacity-90 transition-opacity"
-                      onClick={() => handleOrder(product)}
+                      disabled
                     >
-                      <ShoppingBag className="w-3.5 h-3.5 mr-1.5" /> Order Now
+                      <ShoppingBag className="w-3.5 h-3.5 mr-1.5" /> Coming Soon
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       className="border-border/50"
-                      onClick={handleContact}
+                      onClick={() => handleWhatsAppChat(product)}
+                      title="Chat on WhatsApp"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                     </Button>
                   </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Ordering is coming soon. For now, contact the seller on WhatsApp for product details and purchase.
+                  </p>
                 </div>
               </div>
             ))}
@@ -326,7 +343,6 @@ function StorefrontContent() {
         <p className="text-[11px] text-muted-foreground">{t('storefront.empowering')}</p>
       </footer>
 
-      {/* Auth Modal */}
       <BuyerAuthModal
         isOpen={showAuth}
         onClose={() => { setShowAuth(false); setPendingProduct(null); }}
@@ -334,7 +350,6 @@ function StorefrontContent() {
         storeName={seller?.store_name || undefined}
       />
 
-      {/* Order Confirmation */}
       <OrderConfirmation
         isOpen={showOrderConfirm}
         onClose={() => { setShowOrderConfirm(false); setOrderedProduct(null); }}
