@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Zap, Store, Upload, Sparkles, Shield, Globe } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useEffect } from 'react';
 
 export default function Index() {
@@ -27,6 +28,7 @@ export default function Index() {
             <span className="text-lg font-bold text-foreground tracking-tight">ApnaBazar</span>
           </div>
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <LanguageSwitcher />
             <Button variant="outline" size="sm" onClick={() => navigate('/auth')} className="border-border/50">
               {t('auth.signIn')}
