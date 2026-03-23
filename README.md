@@ -15,6 +15,7 @@ Public URL - https://apna-bazar-cs.vercel.app
 | **AI Product Digitization** | Upload product images → Gemini 2.5 Flash extracts title, description, price, category & tags automatically |
 | **Seller Dashboard** | Manage your catalog, view analytics, edit products, and customize your store |
 | **Instant Storefront** | Every seller gets a public `/store/:slug` page — share it via WhatsApp, Instagram, anywhere |
+| **WhatsApp Buyer Contact** | Buyers can reach the seller directly from the storefront with a product-specific WhatsApp message |
 | **Multi-language Support** | Full i18n for **English**, **Hindi (हिन्दी)**, and **Telugu (తెలుగు)** |
 | **Auth & Security** | Email/password authentication with protected routes via Supabase Auth |
 | **Store Customization** | Set store name, description, location, phone, and a unique slug |
@@ -135,7 +136,7 @@ Create a `.env` file in the project root with your Supabase credentials:
 
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
 ```
 
 ### 4. Start the development server
@@ -171,6 +172,19 @@ The app will be available at `http://localhost:5173`.
 | `/dashboard` | Seller dashboard | 🔒 Protected (requires auth) |
 | `/store/:slug` | Public storefront | Public |
 | `*` | 404 Not Found | Public |
+
+---
+
+## 🛍️ Storefront Buyer Flow
+
+The current buyer flow on the public storefront is:
+
+1. Browse products on `/store/:slug`
+2. See a temporary `Coming Soon` state for in-app ordering
+3. Contact the seller directly on WhatsApp from the product card
+4. Continue the purchase conversation with the seller on WhatsApp
+
+This keeps the storefront easy to demo and deploy while direct seller contact remains active.
 
 ---
 
