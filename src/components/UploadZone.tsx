@@ -5,6 +5,7 @@ import { Upload, Loader2, CheckCircle2, XCircle, IndianRupee } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { compressImage } from '@/lib/utils';
 
 interface UploadZoneProps {
   sellerId: string;
@@ -35,21 +36,38 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
       const uploadedFiles: { fileUrl: string; fileId: string }[] = [];
 
       for (const file of files) {
+        let fileToUpload: File | Blob = file;
+        
+        // Compress images over 150KB to target ~100KB for AI and fast upload
+        if (file.type.startsWith('image/') && file.size > 150 * 1024) {
+          try {
+            fileToUpload = await compressImage(file);
+            console.log(`Compressed ${file.name} from ${(file.size / 1024).toFixed(1)}KB to ${(fileToUpload.size / 1024).toFixed(1)}KB`);
+          } catch (compressError) {
+            console.error('Compression failed, using original file:', compressError);
+          }
+        }
+
         const ext = file.name.split('.').pop();
         const path = `${sellerId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
         const { error: uploadError } = await supabase.storage
           .from('uploads')
-          .upload(path, file);
+          .upload(path, fileToUpload);
 
         if (uploadError) {
-          console.error('Upload error:', uploadError);
+          console.error('Storage upload error:', uploadError);
+          toast({ 
+            title: 'Storage Error', 
+            description: `Failed to upload ${file.name}: ${uploadError.message}`, 
+            variant: 'destructive' 
+          });
           continue;
         }
 
         const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path);
 
-        const { data: fileRecord } = await supabase
+        const { data: fileRecord, error: insertError } = await supabase
           .from('files')
           .insert({
             seller_id: sellerId,
@@ -60,6 +78,16 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
           .select()
           .single();
 
+        if (insertError) {
+          console.error('File record insert error:', insertError);
+          toast({ 
+            title: 'Database Error', 
+            description: `Failed to create record for ${file.name}: ${insertError.message}`, 
+            variant: 'destructive' 
+          });
+          continue;
+        }
+
         if (fileRecord) {
           uploadedFiles.push({ fileUrl: urlData.publicUrl, fileId: fileRecord.id });
         }
@@ -67,7 +95,6 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
 
       if (uploadedFiles.length === 0) {
         setStep('error');
-        toast({ title: 'Upload failed', description: 'No files could be uploaded.', variant: 'destructive' });
         return;
       }
 
@@ -75,19 +102,23 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
       setStep('processing');
 
       const priceOverride = overridePrice ? parseFloat(overridePrice) : null;
+      let successCount = 0;
 
       for (const { fileUrl, fileId } of uploadedFiles) {
         try {
           await supabase.from('files').update({ status: 'processing' }).eq('id', fileId);
 
-          const { data, error } = await supabase.functions.invoke('digitize', {
+          const { data, error: invokeError } = await supabase.functions.invoke('digitize', {
             body: { imageUrl: fileUrl, sellerId },
           });
 
-          if (error) throw error;
+          if (invokeError) {
+            console.error('Edge function invocation error:', invokeError);
+            throw new Error(`AI processing failed: ${invokeError.message || 'Unknown error'}`);
+          }
 
           if (data?.product) {
-            await supabase.from('products').insert({
+            const { error: productError } = await supabase.from('products').insert({
               seller_id: sellerId,
               title: data.product.title,
               description: data.product.description,
@@ -96,6 +127,15 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
               tags: data.product.tags || [],
               image_url: fileUrl,
             });
+
+            if (productError) {
+              console.error('Product insertion error:', productError);
+              throw new Error(`Failed to save product: ${productError.message}`);
+            }
+            
+            successCount++;
+          } else {
+            throw new Error('AI digitization did not return a valid product.');
           }
 
           await supabase.from('files').update({ status: 'completed' }).eq('id', fileId);
@@ -104,16 +144,25 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
           console.error('Processing error:', err);
           await supabase.from('files').update({ status: 'failed' }).eq('id', fileId);
           setProcessedCount((prev) => prev + 1);
+          toast({ 
+            title: 'Processing Error', 
+            description: err instanceof Error ? err.message : 'Something went wrong during AI processing', 
+            variant: 'destructive' 
+          });
         }
       }
 
-      setStep('complete');
-      toast({ title: 'Digitization complete', description: `${uploadedFiles.length} files processed.` });
-      onComplete();
+      if (successCount === 0 && uploadedFiles.length > 0) {
+        setStep('error');
+      } else {
+        setStep('complete');
+        toast({ title: 'Digitization complete', description: `${successCount} of ${uploadedFiles.length} files successfully processed.` });
+        onComplete();
+      }
     } catch (err) {
       console.error(err);
       setStep('error');
-      toast({ title: 'Error', description: 'Something went wrong during processing.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Critical error during processing flow.', variant: 'destructive' });
     }
   }, [sellerId, onComplete, toast, overridePrice]);
 

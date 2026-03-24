@@ -128,7 +128,7 @@ const translations = {
   // ── Upload ──
   'upload.dragDrop': { en: 'Drag & drop product images here', te: 'ప్రొడక్ట్ ఫోటోలను ఇక్కడ డ్రాగ్ & డ్రాప్ చేయండి', hi: 'प्रोडक्ट फोटो यहां ड्रैग & ड्रॉप करें' },
   'upload.orClick': { en: 'or click to browse files', te: 'లేదా ఫైల్స్ బ్రౌజ్ చేయడానికి క్లిక్ చేయండి', hi: 'या फाइल ब्राउज़ करने के लिए क्लिक करें' },
-  'upload.supported': { en: 'Supports JPG, PNG, WebP • Max 10MB per file', te: 'JPG, PNG, WebP • ఫైల్‌కి గరిష్టంగా 10MB', hi: 'JPG, PNG, WebP • प्रति फ़ाइल अधिकतम 10MB' },
+  'upload.supported': { en: 'Supports JPG, PNG, WebP • Auto-optimized for AI', te: 'JPG, PNG, WebP • AI కోసం ఆటోమేట్ చేయబడింది', hi: 'JPG, PNG, WebP • AI के लिए ऑटो-ऑप्टिमाइज़्ड' },
   'upload.processing': { en: 'Processing...', te: 'ప్రాసెసింగ్...', hi: 'प्रोसेसिंग...' },
   'upload.price': { en: 'Price (₹)', te: 'ధర (₹)', hi: 'कीमत (₹)' },
   'upload.digitize': { en: 'Digitize Products', te: 'ఉత్పత్తులను డిజిటైజ్ చేయి', hi: 'उत्पाद डिजिटाइज़ करें' },

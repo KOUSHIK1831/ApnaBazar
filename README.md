@@ -12,7 +12,7 @@ Public URL - https://apna-bazar-cs.vercel.app
 
 | Feature | Description |
 |---|---|
-| **AI Product Digitization** | Upload product images → Gemini 2.5 Flash extracts title, description, price, category & tags automatically |
+| **AI Product Digitization** | Upload product images → **Automatic frontend compression to ~100KB** → Gemini 2.5 Flash extracts title, description, price, category & tags with robust error handling |
 | **Seller Dashboard** | Manage your catalog, view analytics, edit products, and customize your store |
 | **Instant Storefront** | Every seller gets a public `/store/:slug` page — share it via WhatsApp, Instagram, anywhere |
 | **WhatsApp Buyer Contact** | Buyers can reach the seller directly from the storefront with a product-specific WhatsApp message |
@@ -103,7 +103,7 @@ Three core tables in Supabase PostgreSQL:
 
 | Table | Description | Key Columns |
 |---|---|---|
-| `sellers` | Seller profiles | `user_id`, `store_name`, `store_slug`, `location`, `phone`, `store_description` |
+| `sellers` | Seller profiles | `user_id`, `store_name`, `store_slug`, `location`, `phone`, `store_description`, `contact_number`, `store_number`, `maps_url` |
 | `products` | Product catalog | `seller_id`, `title`, `description`, `price`, `category`, `tags`, `image_url` |
 | `files` | Uploaded file records | `seller_id`, `file_url`, `file_type`, `status` |
 
@@ -191,8 +191,9 @@ This keeps the storefront easy to demo and deploy while direct seller contact re
 ## 🤖 AI Digitization Flow
 
 1. Seller uploads a product image via the **UploadZone** component
-2. Image is stored in **Supabase Storage**
-3. The `digitize` **Supabase Edge Function** is invoked
+2. **Frontend Compression**: Large images are automatically compressed to ~100KB in the browser
+3. Image is stored in **Supabase Storage**
+4. The `digitize` **Supabase Edge Function** is invoked
 4. The function sends the image to **Google Gemini 2.5 Flash** for analysis
 5. AI returns structured JSON: `title`, `description`, `price`, `category`, `tags`
 6. Product is saved to the `products` table and appears in the seller's catalog
