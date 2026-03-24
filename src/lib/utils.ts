@@ -7,55 +7,59 @@ export function cn(...inputs: ClassValue[]) {
 
 export async function compressImage(file: File, maxDimension: number = 800, initialQuality: number = 0.6): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
 
-        if (width > height) {
-          if (width > maxDimension) {
-            height *= maxDimension / width;
-            width = maxDimension;
-          }
-        } else {
-          if (height > maxDimension) {
-            width *= maxDimension / height;
-            height = maxDimension;
-          }
+      if (width > height) {
+        if (width > maxDimension) {
+          height *= maxDimension / width;
+          width = maxDimension;
         }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
+      } else {
+        if (height > maxDimension) {
+          width *= maxDimension / height;
+          height = maxDimension;
         }
-        ctx.drawImage(img, 0, 0, width, height);
+      }
 
-        const getBlob = (q: number): Promise<Blob> => {
-          return new Promise((res) => {
-            canvas.toBlob((b) => res(b!), 'image/jpeg', q);
-          });
-        };
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
 
-        // Try initial quality, if still > 150KB, try lower quality
-        getBlob(initialQuality).then(async (blob) => {
-          if (blob.size > 150 * 1024 && initialQuality > 0.3) {
-            const secondBlob = await getBlob(0.3);
-            resolve(secondBlob);
-          } else {
-            resolve(blob);
-          }
+      const getBlob = (q: number): Promise<Blob> => {
+        return new Promise((res) => {
+          canvas.toBlob((b) => res(b!), 'image/jpeg', q);
         });
       };
-      img.onerror = (err) => reject(err);
+
+      // Try initial quality, if still > 150KB, try lower quality
+      getBlob(initialQuality).then(async (blob) => {
+        if (blob.size > 150 * 1024 && initialQuality > 0.3) {
+          const secondBlob = await getBlob(0.3);
+          resolve(secondBlob);
+        } else {
+          resolve(blob);
+        }
+      });
     };
-    reader.onerror = (err) => reject(err);
+
+    img.onerror = (err) => {
+      URL.revokeObjectURL(objectUrl);
+      console.error('Image loading failed in compressImage:', err);
+      reject(new Error('Image loading failed'));
+    };
+
+    img.src = objectUrl;
   });
 }

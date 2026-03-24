@@ -42,9 +42,14 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
         if (file.type.startsWith('image/') && file.size > 150 * 1024) {
           try {
             fileToUpload = await compressImage(file);
-            console.log(`Compressed ${file.name} from ${(file.size / 1024).toFixed(1)}KB to ${(fileToUpload.size / 1024).toFixed(1)}KB`);
+            console.log(`[Compression Success] ${file.name}: ${(file.size / 1024).toFixed(1)}KB -> ${(fileToUpload.size / 1024).toFixed(1)}KB`);
           } catch (compressError) {
-            console.error('Compression failed, using original file:', compressError);
+            console.error(`[Compression Failed] ${file.name}:`, compressError);
+            toast({
+              title: 'Compression Warning',
+              description: `Failed to compress ${file.name}, uploading original.`,
+              variant: 'default'
+            });
           }
         }
 
