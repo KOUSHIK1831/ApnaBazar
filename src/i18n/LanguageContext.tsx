@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { Language, TranslationKey, getTranslation } from './translations';
+import { trackEvent } from '@/lib/analytics';
 
 interface LanguageContextType {
   language: Language;
@@ -24,6 +25,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
+    trackEvent('language_switched', { language: lang });
     try {
       localStorage.setItem('apnabazar-lang', lang);
     } catch {

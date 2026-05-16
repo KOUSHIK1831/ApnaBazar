@@ -1,12 +1,59 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-import { Tables } from '@/integrations/supabase/types';
+export interface Seller {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  store_name: string | null;
+  store_slug: string | null;
+  store_description: string | null;
+  location: string | null;
+  phone: string | null;
+  contact_number: string | null;
+  store_number: string | null;
+  maps_url: string | null;
+  banner_url: string | null;
+  theme_color: string | null;
+  created_at: string;
+}
 
-export type Seller = Tables<'sellers'>;
-export type Product = Tables<'products'>;
-export type FileRecord = Tables<'files'>;
+export interface Product {
+  id: string;
+  seller_id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  category: string | null;
+  tags: string[] | null;
+  image_url: string | null;
+  stock?: number;
+  low_stock_threshold?: number;
+  created_at: string;
+}
+
+export interface FileRecord {
+  id: string;
+  seller_id: string;
+  file_url: string;
+  file_type: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface Order {
+  id: string;
+  buyer_id: string;
+  seller_id: string;
+  product_id: string;
+  quantity: number;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  buyer_name: string | null;
+  buyer_phone: string | null;
+  created_at: string;
+  product?: Product;
+}
 
 export interface Order {
   id: string;
@@ -81,56 +128,54 @@ export function useSeller() {
   const createSeller = async (data: Partial<Seller>) => {
     if (!user) return { error: new Error('Not authenticated') };
     
-    // Check slug uniqueness
-    if (data.store_slug) {
-      const { data: existing } = await supabase
-        .from('sellers')
-        .select('id')
-        .eq('store_slug', data.store_slug)
-        .neq('user_id', user.id)
-        .single();
-      
-      if (existing) {
-        return { error: new Error('Store URL is already taken. Please choose a different name or location.') };
-      }
-    }
-
-    const payload: Partial<Seller> & { user_id: string } = {
+    const payload = {
       user_id: user.id,
       full_name: data.full_name,
       store_name: data.store_name,
       store_slug: data.store_slug,
       store_description: data.store_description,
       location: data.location,
-      phone: data.phone,
-      contact_number: data.contact_number,
+      phone: data.phone || data.contact_number,
+      contact_number: data.contact_number || data.phone,
       store_number: data.store_number,
       maps_url: data.maps_url,
+      banner_url: data.banner_url,
+      theme_color: data.theme_color,
     };
-    const { error } = await supabase
-      .from('sellers')
-      .upsert(payload, { onConflict: 'user_id' });
-    if (!error) await fetchSeller();
-    return { error };
+
+    try {
+      // The trigger handle_new_user auto-creates a row on signup, so we should update first.
+      const { data: updated, error: updateError } = await supabase
+        .from('sellers')
+        .update(payload)
+        .eq('user_id', user.id)
+        .select();
+
+      if (updateError) return { error: updateError };
+      
+      if (updated && updated.length > 0) {
+        await fetchSeller();
+        return { error: null };
+      }
+
+      // If no row was updated, try inserting (just in case the trigger didn't run)
+      const { error: insertError } = await supabase
+        .from('sellers')
+        .insert(payload);
+
+      if (insertError) return { error: insertError };
+      
+      await fetchSeller();
+      return { error: null };
+    } catch (err) {
+      console.error('createSeller unexpected error', err);
+      return { error: err instanceof Error ? err : new Error(String(err)) };
+    }
   };
 
   const updateSellerProfile = async (updates: Partial<Seller>) => {
-    if (!seller) return;
-
-    // Check slug uniqueness
-    if (updates.store_slug && updates.store_slug !== seller.store_slug) {
-      const { data: existing } = await supabase
-        .from('sellers')
-        .select('id')
-        .eq('store_slug', updates.store_slug)
-        .neq('id', seller.id)
-        .single();
-      
-      if (existing) {
-        return { error: new Error('Store URL is already taken. Please choose a different name or location.') };
-      }
-    }
-
+    if (!seller) return { error: new Error('No seller profile found') };
+    
     const { error } = await supabase
       .from('sellers')
       .update(updates)

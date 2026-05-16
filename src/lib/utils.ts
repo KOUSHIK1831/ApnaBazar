@@ -5,61 +5,56 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export async function compressImage(file: File, maxDimension: number = 800, initialQuality: number = 0.6): Promise<Blob> {
+/**
+ * Compresses an image file by resizing it and reducing quality.
+ * Target size is around 100KB for AI processing efficiency.
+ */
+export async function compressImage(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-    
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
 
-      if (width > height) {
-        if (width > maxDimension) {
-          height *= maxDimension / width;
-          width = maxDimension;
-        }
-      } else {
-        if (height > maxDimension) {
-          width *= maxDimension / height;
-          height = maxDimension;
-        }
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Failed to get canvas context'));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-
-      const getBlob = (q: number): Promise<Blob> => {
-        return new Promise((res) => {
-          canvas.toBlob((b) => res(b!), 'image/jpeg', q);
-        });
-      };
-
-      // Try initial quality, if still > 150KB, try lower quality
-      getBlob(initialQuality).then(async (blob) => {
-        if (blob.size > 150 * 1024 && initialQuality > 0.3) {
-          const secondBlob = await getBlob(0.3);
-          resolve(secondBlob);
+        // Max dimension 1200px for AI processing
+        const MAX_DIM = 1200;
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height *= MAX_DIM / width;
+            width = MAX_DIM;
+          }
         } else {
-          resolve(blob);
+          if (height > MAX_DIM) {
+            width *= MAX_DIM / height;
+            height = MAX_DIM;
+          }
         }
-      });
-    };
 
-    img.onerror = (err) => {
-      URL.revokeObjectURL(objectUrl);
-      console.error('Image loading failed in compressImage:', err);
-      reject(new Error('Image loading failed'));
-    };
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
 
-    img.src = objectUrl;
+        // Quality 0.7 for good balance of size and AI readability
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Canvas to Blob conversion failed'));
+            }
+          },
+          'image/jpeg',
+          0.7
+        );
+      };
+      img.onerror = () => reject(new Error('Failed to load image for compression'));
+    };
+    reader.onerror = () => reject(new Error('Failed to read file for compression'));
   });
 }

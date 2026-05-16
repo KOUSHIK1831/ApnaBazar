@@ -13,7 +13,14 @@ export default function Index() {
   const { t } = useLanguage();
 
   useEffect(() => {
-    if (!loading && user) navigate('/dashboard');
+    if (!loading && user) {
+      if (user.role === 'seller') {
+        navigate('/dashboard');
+      } else if (user.role === 'admin') {
+        navigate('/admin');
+      }
+      // Buyers stay on the landing page
+    }
   }, [user, loading, navigate]);
 
   return (
@@ -38,16 +45,25 @@ export default function Index() {
       </nav>
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
-        <div className="max-w-6xl mx-auto px-6 pt-20 pb-24 relative">
+      <section className="relative overflow-hidden min-h-[85vh] flex items-center">
+        {/* Background Image with Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="https://images.unsplash.com/photo-1590736704728-f4730bb30770?auto=format&fit=crop&q=80&w=2000" 
+            alt="Indian Market" 
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/40" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
+        </div>
+
+        <div className="max-w-6xl mx-auto px-6 py-24 relative z-10">
           <div className="max-w-2xl animate-slide-up">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-semibold mb-6 animate-pulse-glow">
-              <Sparkles className="w-3.5 h-3.5" />
-              {t('landing.hero.tag')}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/20 text-primary-foreground dark:text-primary rounded-full text-xs font-semibold mb-6 backdrop-blur-md border border-white/10">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              AI-Powered Seller Platform
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-foreground leading-[1.05] mb-6">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground leading-[1.05] mb-6">
               {t('landing.hero.title')} <br className="hidden md:block" />
               <span className="text-gradient">{t('landing.hero.titleHighlight')}</span>
             </h1>
@@ -55,11 +71,8 @@ export default function Index() {
               {t('landing.hero.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button size="lg" onClick={() => navigate('/auth')} className="bg-gradient-brand hover:opacity-90 transition-opacity text-base px-8">
+              <Button size="lg" onClick={() => navigate('/auth')} className="bg-gradient-brand hover:opacity-90 transition-opacity text-base px-8 shadow-surface-lg">
                 {t('landing.hero.cta')} <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate('/auth')} className="border-border/50 text-base">
-                {t('landing.hero.demo')}
               </Button>
             </div>
           </div>
@@ -71,7 +84,7 @@ export default function Index() {
         <div className="max-w-6xl mx-auto px-6 py-20">
           <div className="text-center mb-14">
             <h2 className="text-3xl font-bold text-foreground mb-3">{t('landing.features.title')}</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">{t('landing.features.subtitle')}</p>
+            <p className="text-muted-foreground max-w-md mx-auto">From uploading photos to a live storefront — we handle the heavy lifting with AI</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
@@ -119,9 +132,9 @@ export default function Index() {
         <div className="max-w-6xl mx-auto px-6 py-16">
           <div className="flex flex-col md:flex-row items-center justify-center gap-8 text-center">
             {[
-              { icon: Shield, label: t('landing.trust.secure') },
-              { icon: Zap, label: t('landing.trust.setup') },
-              { icon: Globe, label: t('landing.trust.share') },
+              { icon: Shield, label: 'Secure & Private' },
+              { icon: Zap, label: 'Setup in 2 Minutes' },
+              { icon: Globe, label: 'Share Anywhere' },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-2 text-muted-foreground">
                 <item.icon className="w-4 h-4" />
