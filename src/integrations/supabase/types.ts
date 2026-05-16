@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      feedback: {
+        Row: {
+          admin_response: string | null
+          content: string
+          created_at: string
+          id: string
+          seller_id: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          admin_response?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          seller_id?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          admin_response?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          seller_id?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "sellers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       files: {
         Row: {
           created_at: string
@@ -51,46 +96,39 @@ export type Database = {
       }
       orders: {
         Row: {
-          id: string
-          buyer_id: string
-          seller_id: string
-          product_id: string
-          quantity: number
-          status: string
+          buyer_id: string | null
           buyer_name: string | null
           buyer_phone: string | null
           created_at: string
+          id: string
+          product_id: string | null
+          quantity: number
+          seller_id: string
+          status: string | null
         }
         Insert: {
-          id?: string
-          buyer_id: string
-          seller_id: string
-          product_id: string
-          quantity?: number
-          status?: string
+          buyer_id?: string | null
           buyer_name?: string | null
           buyer_phone?: string | null
           created_at?: string
+          id?: string
+          product_id?: string | null
+          quantity?: number
+          seller_id: string
+          status?: string | null
         }
         Update: {
-          id?: string
-          buyer_id?: string
-          seller_id?: string
-          product_id?: string
-          quantity?: number
-          status?: string
+          buyer_id?: string | null
           buyer_name?: string | null
           buyer_phone?: string | null
           created_at?: string
+          id?: string
+          product_id?: string | null
+          quantity?: number
+          seller_id?: string
+          status?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "orders_buyer_id_fkey"
-            columns: ["buyer_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "orders_product_id_fkey"
             columns: ["product_id"]
@@ -104,7 +142,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sellers"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       products: {
@@ -116,6 +154,7 @@ export type Database = {
           image_url: string | null
           price: number
           seller_id: string
+          stock: number
           tags: string[] | null
           title: string
         }
@@ -127,6 +166,7 @@ export type Database = {
           image_url?: string | null
           price: number
           seller_id: string
+          stock?: number
           tags?: string[] | null
           title: string
         }
@@ -138,6 +178,7 @@ export type Database = {
           image_url?: string | null
           price?: number
           seller_id?: string
+          stock?: number
           tags?: string[] | null
           title?: string
         }
@@ -151,6 +192,33 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_blocked: boolean | null
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          is_blocked?: boolean | null
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_blocked?: boolean | null
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sellers: {
         Row: {
           created_at: string
@@ -158,9 +226,7 @@ export type Database = {
           id: string
           location: string | null
           phone: string | null
-          contact_number: string | null
-          store_number: string | null
-          maps_url: string | null
+          status: string | null
           store_description: string | null
           store_name: string | null
           store_slug: string | null
@@ -172,9 +238,7 @@ export type Database = {
           id?: string
           location?: string | null
           phone?: string | null
-          contact_number?: string | null
-          store_number?: string | null
-          maps_url?: string | null
+          status?: string | null
           store_description?: string | null
           store_name?: string | null
           store_slug?: string | null
@@ -186,9 +250,7 @@ export type Database = {
           id?: string
           location?: string | null
           phone?: string | null
-          contact_number?: string | null
-          store_number?: string | null
-          maps_url?: string | null
+          status?: string | null
           store_description?: string | null
           store_name?: string | null
           store_slug?: string | null
