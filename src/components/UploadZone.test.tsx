@@ -28,8 +28,7 @@ vi.mock("@/hooks/use-toast", () => ({
 vi.mock("@/i18n/LanguageContext", () => ({
   useLanguage: () => ({ t: (key: string) => key }),
 }));
-
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     storage: {
       from: vi.fn(() => ({
@@ -47,11 +46,12 @@ vi.mock("@/lib/supabase", () => ({
           update: updateMock,
         };
       }
-
-      if (table === "products") {
-        return {
-          insert: insertMock,
-        };
+      return {
+        eq: eqMock,
+      };
+    }),
+  },
+}));
       }
 
       return {

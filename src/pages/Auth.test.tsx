@@ -17,7 +17,7 @@ const {
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
-    signIn: signInMock,
+    signIn: { password: signInMock, sendOtp: vi.fn(), verifyOtp: vi.fn() },
     signUp: signUpMock,
   }),
 }));
@@ -48,13 +48,13 @@ describe("Auth page", () => {
 
     render(<Auth />);
 
-    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+    fireEvent.change(screen.getByPlaceholderText("Enter your email"), {
       target: { value: "seller@example.com" },
     });
-    fireEvent.change(screen.getByPlaceholderText("••••••••"), {
+    fireEvent.change(screen.getByPlaceholderText("Enter your password"), {
       target: { value: "secret123" },
     });
-    fireEvent.submit(screen.getByRole("button", { name: "auth.signIn" }).closest("form")!);
+    fireEvent.submit(screen.getAllByRole("button", { name: "auth.signIn" }).slice(-1)[0].closest("form")!);
 
     await waitFor(() => {
       expect(signInMock).toHaveBeenCalledWith("seller@example.com", "secret123");
@@ -66,7 +66,7 @@ describe("Auth page", () => {
     signInMock.mockResolvedValue({ error: { message: "Invalid login" } });
 
     render(<Auth />);
-    fireEvent.submit(screen.getByRole("button", { name: "auth.signIn" }).closest("form")!);
+    fireEvent.submit(screen.getAllByRole("button", { name: "auth.signIn" }).slice(-1)[0].closest("form")!);
 
     await waitFor(() => {
       expect(toastMock).toHaveBeenCalledWith(
@@ -84,8 +84,8 @@ describe("Auth page", () => {
 
     render(<Auth />);
 
-    fireEvent.click(screen.getByRole("button", { name: "auth.noAccount" }));
-    fireEvent.submit(screen.getByRole("button", { name: "auth.signUp" }).closest("form")!);
+    fireEvent.click(screen.getAllByRole("button", { name: "auth.signUp" }).slice(-1)[0]);
+    fireEvent.submit(screen.getAllByRole("button", { name: "auth.signUp" }).slice(-1)[0].closest("form")!);
 
     await waitFor(() => {
       expect(signUpMock).toHaveBeenCalled();

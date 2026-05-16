@@ -7,7 +7,7 @@ describe("translations", () => {
     expect(languageLabels).toEqual({
       en: "English",
       te: "తెలుగు",
-      hi: "हिन्दी",
+      hi: "हिंदी",
     });
   });
 

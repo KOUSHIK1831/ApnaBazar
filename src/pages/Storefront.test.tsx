@@ -47,7 +47,7 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: fromMock,
   },

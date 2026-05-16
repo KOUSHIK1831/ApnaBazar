@@ -4,7 +4,8 @@ import { cn } from "./utils";
 
 describe("cn", () => {
   it("merges conditional classes", () => {
-    expect(cn("base", false && "hidden", "active")).toBe("base active");
+    const isHidden = false;
+    expect(cn("base", isHidden && "hidden", "active")).toBe("base active");
   });
 
   it("lets tailwind-merge resolve conflicting utilities", () => {

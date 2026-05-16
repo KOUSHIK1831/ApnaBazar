@@ -29,46 +29,43 @@ describe("BuyerAuthModal", () => {
   });
 
   it("signs in and calls onSuccess on success", async () => {
-    signInMock.mockResolvedValue({ error: null });
     const onSuccess = vi.fn();
-
     render(
       <BuyerAuthModal isOpen onClose={vi.fn()} onSuccess={onSuccess} storeName="Test Store" />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
-      target: { value: "buyer@example.com" },
+    // Step 1: Send OTP
+    fireEvent.change(screen.getByPlaceholderText("Enter 10-digit phone"), {
+      target: { value: "9876543210" },
     });
-    fireEvent.change(screen.getByPlaceholderText("••••••••"), {
-      target: { value: "secret123" },
-    });
-    fireEvent.submit(screen.getByRole("button", { name: "auth.signIn" }).closest("form")!);
+    fireEvent.click(screen.getByRole("button", { name: "Send OTP" }));
 
     await waitFor(() => {
-      expect(signInMock).toHaveBeenCalledWith("buyer@example.com", "secret123");
-      expect(onSuccess).toHaveBeenCalled();
+      expect(screen.getByText(/OTP sent to \+91 9876543210/i)).toBeInTheDocument();
+    });
+
+    // Step 2: Verify OTP
+    fireEvent.change(screen.getByPlaceholderText("Enter 6-digit OTP"), {
+      target: { value: "123456" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Verify & Place Order/i }));
+
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledWith("9876543210");
     });
   });
 
   it("shows auth errors and supports switching to sign up", async () => {
-    signUpMock.mockResolvedValue({ error: { message: "Already exists" } });
-
     render(
       <BuyerAuthModal isOpen onClose={vi.fn()} onSuccess={vi.fn()} />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "auth.noAccount" }));
-    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
-      target: { value: "buyer@example.com" },
+    // Should show error for invalid phone
+    fireEvent.change(screen.getByPlaceholderText("Enter 10-digit phone"), {
+      target: { value: "123" },
     });
-    fireEvent.change(screen.getByPlaceholderText("••••••••"), {
-      target: { value: "secret123" },
-    });
-    fireEvent.submit(screen.getByRole("button", { name: "auth.signUp" }).closest("form")!);
+    fireEvent.click(screen.getByRole("button", { name: "Send OTP" }));
 
-    await waitFor(() => {
-      expect(signUpMock).toHaveBeenCalled();
-      expect(screen.getByText("Already exists")).toBeInTheDocument();
-    });
+    expect(screen.getByText(/Please enter a valid 10-digit phone number/i)).toBeInTheDocument();
   });
 });

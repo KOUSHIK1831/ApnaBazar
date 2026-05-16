@@ -12,7 +12,7 @@ vi.mock("./useAuth", () => ({
   useAuth: () => authState,
 }));
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: fromMock,
   },

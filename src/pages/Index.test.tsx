@@ -30,7 +30,7 @@ vi.mock("@/i18n/LanguageContext", () => ({
 
 describe("Index page", () => {
   it("redirects authenticated users to the dashboard", async () => {
-    authState.user = { id: "user-1" };
+    authState.user = { id: "user-1", role: "seller" };
     authState.loading = false;
 
     render(<Index />);
