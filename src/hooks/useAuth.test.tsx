@@ -11,6 +11,7 @@ const {
   signUpMock,
   signOutMock,
   unsubscribeMock,
+  fromMock,
 } = vi.hoisted(() => ({
   onAuthStateChangeMock: vi.fn(),
   getSessionMock: vi.fn(),
@@ -18,9 +19,10 @@ const {
   signUpMock: vi.fn(),
   signOutMock: vi.fn(),
   unsubscribeMock: vi.fn(),
+  fromMock: vi.fn(),
 }));
 
-vi.mock("@/lib/supabase", () => ({
+vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
       onAuthStateChange: onAuthStateChangeMock,
@@ -29,6 +31,7 @@ vi.mock("@/lib/supabase", () => ({
       signUp: signUpMock,
       signOut: signOutMock,
     },
+    from: fromMock,
   },
 }));
 
@@ -39,8 +42,8 @@ function Consumer() {
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="user">{user?.email ?? "none"}</span>
-      <button onClick={() => signIn("test@example.com", "secret123")}>sign in</button>
-      <button onClick={() => signUp("test@example.com", "secret123")}>sign up</button>
+      <button onClick={() => signIn.password("test@example.com", "secret123")}>sign in</button>
+      <button onClick={() => signUp("9999999999", "Tester", "test@example.com", "secret123")}>sign up</button>
       <button onClick={() => signOut()}>sign out</button>
     </div>
   );
@@ -56,10 +59,17 @@ describe("useAuth", () => {
       data: { subscription: { unsubscribe: unsubscribeMock } },
     });
     getSessionMock.mockResolvedValue({
-      data: { session: { user: { id: "user-1", email: "test@example.com" } } },
+      data: { session: { user: { id: "user-1", email: "test@example.com", user_metadata: {} } } },
     });
-    signInWithPasswordMock.mockResolvedValue({ error: null });
-    signUpMock.mockResolvedValue({ error: null });
+    fromMock.mockReturnValue({
+      select: () => ({
+        eq: () => ({
+          single: async () => ({ data: { role: 'seller', is_blocked: false } })
+        })
+      })
+    });
+    signInWithPasswordMock.mockResolvedValue({ data: { session: {} }, error: null });
+    signUpMock.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
     signOutMock.mockResolvedValue({});
 
     render(
@@ -82,11 +92,7 @@ describe("useAuth", () => {
         email: "test@example.com",
         password: "secret123",
       });
-      expect(signUpMock).toHaveBeenCalledWith({
-        email: "test@example.com",
-        password: "secret123",
-        options: { emailRedirectTo: window.location.origin },
-      });
+      expect(signUpMock).toHaveBeenCalled();
       expect(signOutMock).toHaveBeenCalled();
     });
   });

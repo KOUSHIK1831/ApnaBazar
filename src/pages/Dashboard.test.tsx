@@ -17,8 +17,8 @@ const {
   sellerState: {
     seller: null as null | { id: string; store_name?: string; store_slug?: string },
     products: [] as Array<{ id: string; title: string; price: number; seller_id: string }>,
-    files: [] as any[],
-    orders: [] as any[],
+    files: [] as Array<{ id: string; file_url: string; status: string }>,
+    orders: [] as Array<{ id: string; status: string; quantity: number }>,
     loading: false,
     fetchSeller: vi.fn(),
     fetchProducts: vi.fn(),

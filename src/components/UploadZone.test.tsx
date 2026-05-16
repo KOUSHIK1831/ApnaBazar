@@ -52,15 +52,6 @@ vi.mock("@/integrations/supabase/client", () => ({
     }),
   },
 }));
-      }
-
-      return {
-        insert: insertMock,
-        update: updateMock,
-      };
-    }),
-  },
-}));
 
 describe("UploadZone", () => {
   beforeEach(() => {
