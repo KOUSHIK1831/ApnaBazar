@@ -1,11 +1,17 @@
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Seller } from '@/hooks/useSeller';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Save, MapPin, Phone, Hash, Store, FileText, Loader2 } from 'lucide-react';
+import { Save, MapPin, Phone, Hash, Store, FileText, Loader2, Image as ImageIcon } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
+
+const THEME_COLORS = [
+  '#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899',
+  '#6366F1', '#14B8A6', '#84CC16', '#F97316', '#06B6D4', '#A855F7',
+];
 
 interface StoreSettingsProps {
   seller: Seller;
@@ -19,14 +25,30 @@ export default function StoreSettings({ seller, onUpdate }: StoreSettingsProps) 
   const [contactNumber, setContactNumber] = useState(seller.contact_number || seller.phone || '');
   const [storeNumber, setStoreNumber] = useState(seller.store_number || '');
   const [mapsUrl, setMapsUrl] = useState(seller.maps_url || '');
+  const [bannerUrl, setBannerUrl] = useState(seller.banner_url || '');
+  const [themeColor, setThemeColor] = useState(seller.theme_color || '#8B5CF6');
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  const generatedSlug = `${storeName} ${location}`
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBanner(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `banners/${seller.id}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('uploads').upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path);
+      setBannerUrl(urlData.publicUrl);
+      toast({ title: 'Banner uploaded' });
+    } catch (err) {
+      toast({ title: 'Upload failed', description: String(err), variant: 'destructive' });
+    }
+    setUploadingBanner(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -38,6 +60,8 @@ export default function StoreSettings({ seller, onUpdate }: StoreSettingsProps) 
       contact_number: contactNumber,
       store_number: storeNumber,
       maps_url: mapsUrl,
+      banner_url: bannerUrl,
+      theme_color: themeColor,
     });
     setSaving(false);
     if (result?.error) {
@@ -46,6 +70,11 @@ export default function StoreSettings({ seller, onUpdate }: StoreSettingsProps) 
       toast({ title: t('common.saved'), description: t('settings.saveSuccess') });
     }
   };
+
+  const generatedSlug = `${storeName} ${location}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -140,6 +169,74 @@ export default function StoreSettings({ seller, onUpdate }: StoreSettingsProps) 
               />
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Banner & Theme */}
+      <Card className="shadow-surface border-border/50">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-purple-500/10 rounded-lg flex items-center justify-center">
+              <ImageIcon className="w-4 h-4 text-purple-500" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Store Banner & Theme</CardTitle>
+              <CardDescription className="text-xs">Customize your public storefront look</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Banner Image</label>
+            {bannerUrl && (
+              <div className="relative rounded-lg overflow-hidden border border-border mb-3">
+                <img src={bannerUrl} alt="Store banner" className="w-full h-32 object-cover" />
+                <button
+                  onClick={() => setBannerUrl('')}
+                  className="absolute top-2 right-2 w-6 h-6 bg-black/50 text-white rounded-full flex items-center justify-center text-xs hover:bg-black/70"
+                >
+                  X
+                </button>
+              </div>
+            )}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center gap-2 px-4 py-2 border border-border/50 rounded-lg text-sm hover:bg-muted/50 transition-colors">
+                {uploadingBanner ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="w-4 h-4" />
+                )}
+                {uploadingBanner ? 'Uploading...' : bannerUrl ? 'Change Banner' : 'Upload Banner'}
+              </div>
+              <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
+            </label>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Theme Color</label>
+            <div className="flex flex-wrap gap-2">
+              {THEME_COLORS.map((color) => (
+                <button
+                  key={color}
+                  onClick={() => setThemeColor(color)}
+                  className={`w-8 h-8 rounded-full transition-all duration-200 ${
+                    themeColor === color ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'hover:scale-110'
+                  }`}
+                  style={{ backgroundColor: color }}
+                  title={color}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-muted-foreground">Custom:</span>
+              <input
+                type="color"
+                value={themeColor}
+                onChange={(e) => setThemeColor(e.target.value)}
+                className="w-8 h-8 rounded cursor-pointer border border-border"
+              />
+              <span className="text-xs font-mono text-muted-foreground">{themeColor}</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

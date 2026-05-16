@@ -1,27 +1,92 @@
-import { useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Loader2, CheckCircle2, XCircle, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { compressImage } from '@/lib/utils';
+import { trackEvent } from '@/lib/analytics';
+import ReviewCard from './ReviewCard';
+
+interface AIProduct {
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  tags: string[];
+}
+
+interface PendingReview {
+  product: AIProduct;
+  imageUrl: string;
+  fileId: string;
+}
 
 interface UploadZoneProps {
   sellerId: string;
   onComplete: () => void;
 }
 
-type ProcessingStep = 'idle' | 'uploading' | 'processing' | 'complete' | 'error';
+type ProcessingStep = 'idle' | 'uploading' | 'processing' | 'review' | 'complete' | 'error';
 
 export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
   const [step, setStep] = useState<ProcessingStep>('idle');
   const [dragOver, setDragOver] = useState(false);
   const [fileCount, setFileCount] = useState(0);
   const [processedCount, setProcessedCount] = useState(0);
+  const [currentFileName, setCurrentFileName] = useState('');
   const [overridePrice, setOverridePrice] = useState('');
+  const [pendingReviews, setPendingReviews] = useState<PendingReview[]>([]);
+  const [approvedCount, setApprovedCount] = useState(0);
+  const [estimatedSeconds, setEstimatedSeconds] = useState(0);
+  const startTimeRef = useRef(0);
   const { toast } = useToast();
   const { t } = useLanguage();
+
+  const approveProduct = useCallback(async (product: AIProduct, imageUrl: string) => {
+    const { error } = await supabase.from('products').insert({
+      seller_id: sellerId,
+      title: product.title,
+      description: product.description,
+      price: product.price,
+      category: product.category,
+      tags: product.tags || [],
+      image_url: imageUrl,
+    });
+    if (error) {
+      toast({ title: 'Error', description: `Failed to save product: ${error.message}`, variant: 'destructive' });
+      return false;
+    }
+    trackEvent('product_uploaded', { category: product.category, price: product.price });
+    trackEvent('ai_digitization_complete', { category: product.category });
+    return true;
+  }, [sellerId, toast]);
+
+  const rejectProduct = useCallback((fileId: string) => {
+    supabase.from('files').update({ status: 'rejected' }).eq('id', fileId);
+  }, []);
+
+  const handleApproveReview = useCallback(async (product: AIProduct, imageUrl: string, fileId: string) => {
+    const ok = await approveProduct(product, imageUrl);
+    if (ok) {
+      setApprovedCount((prev) => prev + 1);
+      setPendingReviews((prev) => prev.filter((r) => r.fileId !== fileId));
+    }
+  }, [approveProduct]);
+
+  const handleRejectReview = useCallback((fileId: string) => {
+    rejectProduct(fileId);
+    setPendingReviews((prev) => prev.filter((r) => r.fileId !== fileId));
+  }, [rejectProduct]);
+
+  // Transition to complete when all reviews are handled
+  useEffect(() => {
+    if (step === 'review' && pendingReviews.length === 0 && approvedCount > 0) {
+      setStep('complete');
+      onComplete();
+    }
+  }, [step, pendingReviews.length, approvedCount, onComplete]);
 
   const processFiles = useCallback(async (fileList: FileList) => {
     const files = Array.from(fileList);
@@ -30,12 +95,14 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
     setFileCount(files.length);
     setProcessedCount(0);
     setStep('uploading');
+    startTimeRef.current = Date.now();
 
     try {
       // Upload files to storage and create file records
       const uploadedFiles: { fileUrl: string; fileId: string }[] = [];
 
       for (const file of files) {
+        setCurrentFileName(file.name);
         let fileToUpload: File | Blob = file;
         
         // Compress images over 150KB to target ~100KB for AI and fast upload
@@ -94,7 +161,7 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
         }
 
         if (fileRecord) {
-          uploadedFiles.push({ fileUrl: urlData.publicUrl, fileId: fileRecord.id });
+          uploadedFiles.push({ fileUrl: urlData.publicUrl, fileId: fileRecord.id, fileName: file.name });
         }
       }
 
@@ -108,9 +175,12 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
 
       const priceOverride = overridePrice ? parseFloat(overridePrice) : null;
       let successCount = 0;
+      let localProcessedCount = 0;
+      const reviews: PendingReview[] = [];
 
-      for (const { fileUrl, fileId } of uploadedFiles) {
+      for (const { fileUrl, fileId, fileName } of uploadedFiles) {
         try {
+          setCurrentFileName(fileName);
           await supabase.from('files').update({ status: 'processing' }).eq('id', fileId);
 
           const { data, error: invokeError } = await supabase.functions.invoke('digitize', {
@@ -123,32 +193,34 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
           }
 
           if (data?.product) {
-            const { error: productError } = await supabase.from('products').insert({
-              seller_id: sellerId,
-              title: data.product.title,
-              description: data.product.description,
-              price: priceOverride ?? data.product.price ?? 0,
-              category: data.product.category,
-              tags: data.product.tags || [],
-              image_url: fileUrl,
+            reviews.push({
+              product: {
+                title: data.product.title,
+                description: data.product.description,
+                price: priceOverride ?? data.product.price ?? 0,
+                category: data.product.category,
+                tags: data.product.tags || [],
+              },
+              imageUrl: fileUrl,
+              fileId,
             });
-
-            if (productError) {
-              console.error('Product insertion error:', productError);
-              throw new Error(`Failed to save product: ${productError.message}`);
-            }
-            
             successCount++;
           } else {
             throw new Error('AI digitization did not return a valid product.');
           }
 
           await supabase.from('files').update({ status: 'completed' }).eq('id', fileId);
-          setProcessedCount((prev) => prev + 1);
+          localProcessedCount++;
+          setProcessedCount(localProcessedCount);
+          const elapsed = (Date.now() - startTimeRef.current) / 1000;
+          const avgPerFile = elapsed / localProcessedCount;
+          const remaining = Math.max(0, Math.round(avgPerFile * (fileCount - localProcessedCount)));
+          setEstimatedSeconds(remaining);
         } catch (err) {
           console.error('Processing error:', err);
           await supabase.from('files').update({ status: 'failed' }).eq('id', fileId);
-          setProcessedCount((prev) => prev + 1);
+          localProcessedCount++;
+          setProcessedCount(localProcessedCount);
           toast({ 
             title: 'Processing Error', 
             description: err instanceof Error ? err.message : 'Something went wrong during AI processing', 
@@ -160,16 +232,16 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
       if (successCount === 0 && uploadedFiles.length > 0) {
         setStep('error');
       } else {
-        setStep('complete');
-        toast({ title: 'Digitization complete', description: `${successCount} of ${uploadedFiles.length} files successfully processed.` });
-        onComplete();
+        setPendingReviews(reviews);
+        setApprovedCount(0);
+        setStep('review');
       }
     } catch (err) {
       console.error(err);
       setStep('error');
       toast({ title: 'Error', description: 'Critical error during processing flow.', variant: 'destructive' });
     }
-  }, [sellerId, onComplete, toast, overridePrice]);
+  }, [sellerId, onComplete, toast, overridePrice, fileCount]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -201,14 +273,44 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
         <h3 className="font-semibold text-foreground mb-1">
           {step === 'uploading' ? t('upload.processing') : 'AI is digitizing your catalog...'}
         </h3>
-        <p className="text-sm text-muted-foreground">
-          {step === 'processing' && `${processedCount} / ${fileCount} files processed`}
+        <p className="text-sm text-muted-foreground mb-1">
+          {currentFileName}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {processedCount + 1} / {fileCount} files
         </p>
         <div className="mt-4 w-full max-w-xs bg-secondary rounded-full h-2 overflow-hidden">
           <div
             className="h-full bg-gradient-brand rounded-full transition-all duration-500"
             style={{ width: `${fileCount > 0 ? (processedCount / fileCount) * 100 : 0}%` }}
           />
+        </div>
+        {estimatedSeconds > 0 && (
+          <p className="text-xs text-muted-foreground mt-2">~{estimatedSeconds}s remaining</p>
+        )}
+      </div>
+    );
+  }
+
+  if (step === 'review') {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-foreground">Review Products</h3>
+          <p className="text-sm text-muted-foreground">{pendingReviews.length} pending · {approvedCount} approved</p>
+        </div>
+        <p className="text-sm text-muted-foreground">Review the AI-extracted product details. Approve to publish, edit to correct, or reject to discard.</p>
+        <div className="space-y-4">
+          {pendingReviews.map((review) => (
+            <ReviewCard
+              key={review.fileId}
+              product={review.product}
+              imageUrl={review.imageUrl}
+              index={0}
+              onApprove={(product) => handleApproveReview(product, review.imageUrl, review.fileId)}
+              onReject={() => handleRejectReview(review.fileId)}
+            />
+          ))}
         </div>
       </div>
     );

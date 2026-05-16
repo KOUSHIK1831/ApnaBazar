@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useSeller } from '@/hooks/useSeller';
 import UploadZone from '@/components/UploadZone';
@@ -7,15 +8,34 @@ import ProductCard from '@/components/ProductCard';
 import StoreSetup from '@/components/StoreSetup';
 import StoreSettings from '@/components/StoreSettings';
 import Orders from '@/components/Orders';
+import InventoryEditor from '@/components/InventoryEditor';
 import { Button } from '@/components/ui/button';
-import { LogOut, ExternalLink, Package, Upload, Store, Settings, LayoutGrid, Copy, Check, ShoppingBag } from 'lucide-react';
+import { 
+  LogOut, 
+  ExternalLink, 
+  Package, 
+  Upload, 
+  Store, 
+  Settings, 
+  LayoutGrid, 
+  Copy, 
+  Check, 
+  ShoppingBag, 
+  ClipboardList, 
+  HelpCircle,
+  MessageSquarePlus
+} from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
+import OfflineBanner from '@/components/OfflineBanner';
+import AppTour from '@/components/AppTour';
+import FeedbackModal from '@/components/FeedbackModal';
+import { useWelcomeTour } from '@/hooks/useWelcomeTour';
 
-type Tab = 'products' | 'orders' | 'upload' | 'settings';
+export type Tab = 'products' | 'orders' | 'upload' | 'inventory' | 'settings';
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
@@ -25,9 +45,13 @@ export default function Dashboard() {
   const {
     seller,
     products,
+    files,
     orders,
     loading,
+    fetchSeller,
     fetchProducts,
+    fetchFiles,
+    fetchOrders,
     createSeller,
     updateSellerProfile,
     updateProduct,
@@ -36,6 +60,51 @@ export default function Dashboard() {
   } = useSeller();
   const [activeTab, setActiveTab] = useState<Tab>('products');
   const [copied, setCopied] = useState(false);
+  const { startTour } = useWelcomeTour(setActiveTab);
+
+  useEffect(() => {
+    if (!seller?.id) return;
+
+    fetchProducts();
+    
+    const channel = supabase
+      .channel("orders-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "orders",
+          filter: `seller_id=eq.${seller.id}`,
+        },
+        (payload) => {
+          const newOrder = payload.new as { product_id?: string; buyer_name?: string };
+          toast({
+            title: t('orders.newOrder'),
+            description: t('orders.newOrderDesc'),
+          });
+          fetchOrders();
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [seller?.id, toast, t, fetchProducts, fetchOrders]);
+  // Redirect admin users away from seller dashboard to the admin portal
+  useEffect(() => {
+    if (user?.role === 'admin') navigate('/admin');
+  }, [user?.role, navigate]);
+
+  useEffect(() => {
+    const lowStock = products.filter(
+      (p) => p.stock !== undefined && p.stock > 0 && p.stock <= (p.low_stock_threshold || 5)
+    );
+    if (lowStock.length > 0 && seller?.store_name) {
+      toast({
+        title: "Low Stock Alert",
+        description: `${lowStock.length} product(s) running low on stock.`,
+      });
+    }
+  }, [products, seller?.store_name, toast]);
 
   const copyStoreLink = () => {
     if (seller?.store_slug) {
@@ -78,13 +147,26 @@ export default function Dashboard() {
           </div>
           <StoreSetup
             onComplete={async (data) => {
-              const result = await createSeller(data);
-              if (result?.error) {
-                toast({
-                  title: 'Error creating store',
-                  description: String(result.error.message || result.error),
-                  variant: 'destructive',
-                });
+              try {
+                const result = await createSeller(data);
+                if (result?.error) {
+                  const err = result.error;
+                  const message: string = (err as Error)?.message || String(err);
+                  // Detect common DB policy/trigger recursion error and provide guidance
+                  const isPolicyRecursion = /infinite recursion/i.test(message) || 
+                    (typeof err === 'object' && err !== null && 'code' in err && err.code === '42P17');
+                  toast({
+                    title: 'Error creating store',
+                    description: isPolicyRecursion
+                      ? 'Server policy/trigger recursion detected. Check profiles RLS and admin policies (see console/sql).' 
+                      : message,
+                    variant: 'destructive',
+                  });
+                  if (isPolicyRecursion) console.error('Policy recursion error creating seller:', err);
+                }
+              } catch (ex) {
+                console.error('Unexpected error creating seller', ex);
+                toast({ title: 'Error creating store', description: String(ex), variant: 'destructive' });
               }
             }}
           />
@@ -97,11 +179,13 @@ export default function Dashboard() {
     { id: 'products', label: t('dashboard.tabs.products'), icon: LayoutGrid },
     { id: 'orders', label: t('dashboard.tabs.orders'), icon: ShoppingBag },
     { id: 'upload', label: t('dashboard.tabs.upload'), icon: Upload },
+    { id: 'inventory', label: 'Inventory', icon: ClipboardList },
     { id: 'settings', label: t('dashboard.tabs.settings'), icon: Settings },
   ];
 
   return (
     <div className="min-h-screen bg-background">
+      <AppTour setActiveTab={setActiveTab} />
       {/* Header */}
       <header className="border-b border-border/50 bg-card/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-3 sm:px-6">
@@ -118,7 +202,11 @@ export default function Dashboard() {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <ThemeToggle />
-                <LanguageSwitcher variant="compact" />
+                <LanguageSwitcher variant="compact" id="tour-language" />
+                <FeedbackModal />
+                <Button variant="ghost" size="sm" onClick={startTour} title="Help Tour" className="shrink-0 text-muted-foreground hover:text-primary">
+                  <HelpCircle className="w-4 h-4" />
+                </Button>
                 <Button variant="ghost" size="sm" onClick={signOut} title={t('common.signOut')} className="shrink-0">
                   <LogOut className="w-3.5 h-3.5" />
                 </Button>
@@ -153,7 +241,7 @@ export default function Dashboard() {
 
       <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 animate-fade-in">
+        <div id="tour-welcome" className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 animate-fade-in">
           <div className="border border-border/50 rounded-xl p-5 bg-card shadow-surface hover:shadow-surface-lg transition-shadow">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
@@ -195,6 +283,7 @@ export default function Dashboard() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              data-tour={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
                 activeTab === tab.id
@@ -264,6 +353,13 @@ export default function Dashboard() {
             <div>
               <h2 className="text-lg font-semibold text-foreground mb-4">{t('dashboard.uploadDigitize')}</h2>
               <UploadZone sellerId={seller.id} onComplete={fetchProducts} />
+            </div>
+          )}
+
+          {activeTab === 'inventory' && (
+            <div>
+              <h2 className="text-lg font-semibold text-foreground mb-4">Inventory Management</h2>
+              <InventoryEditor products={products} onUpdate={updateProduct} />
             </div>
           )}
 

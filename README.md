@@ -65,7 +65,6 @@ hackathon-cs/
 │   │   └── translations.ts     # EN / HI / TE translation strings
 │   ├── integrations/
 │   │   └── supabase/
-│   │       ├── client.ts       # Supabase client init
 │   │       └── types.ts        # Auto-generated DB types
 │   ├── lib/
 │   │   ├── supabase.ts         # Supabase helper

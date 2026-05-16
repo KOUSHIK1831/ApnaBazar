@@ -9,7 +9,7 @@ const languages: { code: Language; label: string; short: string }[] = [
   { code: 'hi', label: 'हिन्दी', short: 'हि' },
 ];
 
-export default function LanguageSwitcher({ variant = 'default' }: { variant?: 'default' | 'compact' }) {
+export default function LanguageSwitcher({ variant = 'default', id }: { variant?: 'default' | 'compact', id?: string }) {
   const { language, setLanguage } = useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -27,7 +27,7 @@ export default function LanguageSwitcher({ variant = 'default' }: { variant?: 'd
   const current = languages.find((l) => l.code === language) || languages[0];
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative" id={id}>
       <button
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/80 backdrop-blur-sm transition-all hover:bg-accent/10 ${

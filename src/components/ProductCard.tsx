@@ -33,7 +33,7 @@ export default function ProductCard({ product, editable = false, onUpdate, onDel
   };
 
   return (
-    <Card className="group overflow-hidden shadow-surface hover:shadow-surface-lg transition-all duration-300 border-border/50 rounded-xl">
+    <Card className="group overflow-hidden shadow-surface hover:shadow-surface-lg hover:-translate-y-1 transition-all duration-300 border-border/50 rounded-xl">
       {product.image_url && (
         <div className="aspect-[4/5] overflow-hidden bg-secondary">
           <img
@@ -88,6 +88,19 @@ export default function ProductCard({ product, editable = false, onUpdate, onDel
             )}
             {product.category && (
               <p className="text-xs text-muted-foreground uppercase tracking-wider">{product.category}</p>
+            )}
+            {product.stock !== undefined && (
+              <div className="mt-2">
+                <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                  product.stock === 0
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                    : product.stock <= (product.low_stock_threshold || 5)
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                }`}>
+                  {product.stock === 0 ? 'Out of Stock' : `In Stock (${product.stock})`}
+                </span>
+              </div>
             )}
             {editable && (
               <div className="flex gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">

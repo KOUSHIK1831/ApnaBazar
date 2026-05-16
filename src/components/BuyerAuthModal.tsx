@@ -2,54 +2,74 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, Loader2, Store, Eye, EyeOff } from 'lucide-react';
+import { X, Loader2, Store, Phone, MessageSquare, Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 
 interface BuyerAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (phone?: string) => void;
   storeName?: string;
 }
 
 export default function BuyerAuthModal({ isOpen, onClose, onSuccess, storeName }: BuyerAuthModalProps) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [phoneDigits, setPhoneDigits] = useState('');
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const { t } = useLanguage();
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const formatPhone = (value: string) => value.replace(/\D/g, '').slice(0, 10);
+  const isValidPhone = () => phoneDigits.length === 10 && parseInt(phoneDigits[0]) > 5;
+
+  const handleSendOtp = async () => {
+    if (!isValidPhone()) {
+      setError('Please enter a valid 10-digit phone number');
+      return;
+    }
     setSubmitting(true);
     setError('');
-
-    const { error: authError } = isLogin
-      ? await signIn(email, password)
-      : await signUp(email, password);
-
+    try {
+      await signIn.sendOtp(phoneDigits);
+      setShowOtpInput(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send OTP');
+    }
     setSubmitting(false);
+  };
 
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length !== 6) {
+      setError('Please enter a valid 6-digit OTP');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    const { error: authError } = await signIn.verifyOtp(phoneDigits, otp);
+    setSubmitting(false);
     if (authError) {
       setError(authError.message);
     } else {
-      onSuccess();
+      onSuccess(phoneDigits);
     }
+  };
+
+  const resetForm = () => {
+    setPhoneDigits('');
+    setOtp('');
+    setShowOtpInput(false);
+    setError('');
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Modal */}
       <div className="relative w-full max-w-sm mx-4 bg-card rounded-2xl shadow-2xl border border-border/50 animate-slide-up overflow-hidden">
-        {/* Header */}
         <div className="bg-gradient-brand px-6 py-5 text-white">
           <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors">
             <X className="w-5 h-5" />
@@ -59,42 +79,59 @@ export default function BuyerAuthModal({ isOpen, onClose, onSuccess, storeName }
             <span className="text-sm font-medium opacity-80">{storeName || t('common.appName')}</span>
           </div>
           <h2 className="text-lg font-bold">
-            {isLogin ? t('buyerAuth.title') : t('auth.signUp')}
+            {t('buyerAuth.title')}
           </h2>
           <p className="text-sm opacity-80 mt-1">
             {t('buyerAuth.desc')}
           </p>
         </div>
 
-        {/* Form */}
         <div className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
-                {error}
-              </div>
-            )}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">{t('auth.email')}</label>
-              <Input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+          {error && (
+            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg mb-4">
+              {error}
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">{t('auth.password')}</label>
+          )}
+
+          {!showOtpInput ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Phone className="w-4 h-4" /> Enter your phone number to continue
+              </p>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
+                  +91
+                </div>
+                <Input
+                  type="tel"
+                  placeholder="Enter 10-digit phone"
+                  value={phoneDigits}
+                  onChange={(e) => setPhoneDigits(formatPhone(e.target.value))}
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                onClick={handleSendOtp}
+                disabled={submitting || !isValidPhone()}
+                className="w-full"
+              >
+                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Send OTP
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" /> OTP sent to +91 {phoneDigits}
+              </p>
               <div className="relative">
                 <Input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="pr-10"
+                  type={showPassword ? 'text' : 'text'}
+                  placeholder="Enter 6-digit OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="text-center text-2xl tracking-widest pr-10"
+                  maxLength={6}
                 />
                 <button
                   type="button"
@@ -105,25 +142,30 @@ export default function BuyerAuthModal({ isOpen, onClose, onSuccess, storeName }
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <Button
+                onClick={handleVerifyOtp}
+                disabled={submitting || otp.length !== 6}
+                className="w-full"
+              >
+                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Verify & Place Order
+              </Button>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={handleSendOtp}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Resend OTP
+                </button>
+                <button
+                  onClick={resetForm}
+                  className="text-sm text-muted-foreground hover:underline"
+                >
+                  Change number
+                </button>
+              </div>
             </div>
-            <Button type="submit" className="w-full bg-gradient-brand hover:opacity-90 transition-opacity" disabled={submitting}>
-              {submitting ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('common.loading')}</>
-              ) : (
-                isLogin ? t('auth.signIn') : t('auth.signUp')
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => { setIsLogin(!isLogin); setError(''); }}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </div>

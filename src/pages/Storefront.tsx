@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { Seller, Product } from '@/hooks/useSeller';
 import { useAuth } from '@/hooks/useAuth';
 import BuyerAuthModal from '@/components/BuyerAuthModal';
@@ -8,11 +8,12 @@ import OrderConfirmation from '@/components/OrderConfirmation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Store, MapPin, Phone, Hash, ShoppingBag, MessageCircle, ExternalLink } from 'lucide-react';
+import { Store, MapPin, Phone, Hash, ShoppingBag, MessageCircle, ExternalLink, Ban } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
+import { trackEvent } from '@/lib/analytics';
 
 function StorefrontContent() {
   const { slug } = useParams<{ slug: string }>();
@@ -43,6 +44,12 @@ function StorefrontContent() {
         return;
       }
 
+      if (sellerData.status === 'blocked') {
+        setSeller(sellerData); // Still set seller to show theme but hide content
+        setLoading(false);
+        return;
+      }
+
       setSeller(sellerData);
 
       const { data: productsData } = await supabase
@@ -57,6 +64,12 @@ function StorefrontContent() {
     load();
   }, [slug]);
 
+  useEffect(() => {
+    if (seller) {
+      trackEvent('storefront_visited', { slug, storeName: seller.store_name });
+    }
+  }, [seller, slug]);
+
   const openWhatsAppChat = (message: string) => {
     const contactNumber = seller?.contact_number || seller?.phone;
     if (!contactNumber) {
@@ -69,6 +82,7 @@ function StorefrontContent() {
   };
 
   const handleWhatsAppChat = (product: Product) => {
+    trackEvent('whatsapp_clicked', { productId: product.id, productTitle: product.title });
     openWhatsAppChat(
       `Hi, I'm interested in ${product.title} from ${seller?.store_name || 'your store'}. The listed price is Rs. ${product.price}. Can you share more details?`
     );
@@ -78,8 +92,17 @@ function StorefrontContent() {
     openWhatsAppChat(`Hi, I'm interested in the products from ${seller?.store_name || 'your store'}. Can you share more details?`);
   };
 
+
   // Kept for when backend order placement is re-enabled.
   const handleOrder = async (product: Product) => {
+    if (user?.role === 'seller') {
+      toast({
+        title: 'Action Restricted',
+        description: 'Sellers cannot place orders. Please use a buyer account.',
+        variant: 'destructive'
+      });
+      return;
+    }
     if (!user) {
       setPendingProduct(product);
       setShowAuth(true);
@@ -89,7 +112,11 @@ function StorefrontContent() {
   };
 
   // Kept for when backend order placement is re-enabled.
-  const placeOrder = async (product: Product) => {
+  const placeOrder = async (product: Product, buyerPhone: string = '') => {
+    if (user?.role === 'seller') {
+      toast({ title: 'Order restricted', description: 'Sellers cannot place orders. Please use a buyer account.', variant: 'destructive' });
+      return;
+    }
     try {
       const { error } = await supabase.from('orders').insert({
         buyer_id: user!.id,
@@ -97,8 +124,8 @@ function StorefrontContent() {
         product_id: product.id,
         quantity: 1,
         status: 'pending',
-        buyer_name: user!.email,
-        buyer_phone: '',
+        buyer_name: user?.name || user?.email?.split('@')[0] || 'Buyer',
+        buyer_phone: buyerPhone || user?.phone || '',
       });
 
       if (error) {
@@ -109,6 +136,7 @@ function StorefrontContent() {
 
       setOrderedProduct(product);
       setShowOrderConfirm(true);
+      trackEvent('order_placed', { productId: product.id, productTitle: product.title, price: product.price });
       toast({ title: t('storefront.orderPlaced'), description: t('storefront.orderSent') });
     } catch (err) {
       console.error(err);
@@ -117,11 +145,19 @@ function StorefrontContent() {
   };
 
   // Kept for when backend order placement is re-enabled.
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = async (phone?: string) => {
     setShowAuth(false);
+    // The user object might not be updated immediately in the same tick
+    // We can use a small timeout or wait for it, but better is to pass the logic to a place 
+    // where it can access the new session.
     if (pendingProduct) {
-      setTimeout(() => placeOrder(pendingProduct), 500);
-      setPendingProduct(null);
+      toast({ title: "Authenticated", description: "Completing your order..." });
+      // We don't need to pass the user id manually, placeOrder will pick it up 
+      // when it runs after the state update.
+      setTimeout(() => {
+        placeOrder(pendingProduct, phone);
+        setPendingProduct(null);
+      }, 1000);
     }
   };
 
@@ -160,12 +196,42 @@ function StorefrontContent() {
     );
   }
 
+  if (seller?.status === 'blocked') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center animate-fade-in space-y-4">
+          <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Ban className="w-10 h-10 text-destructive" />
+          </div>
+          <h1 className="text-4xl font-black text-foreground tracking-tight">{t('storefront.storeBlocked')}</h1>
+          <p className="text-muted-foreground text-lg leading-relaxed">
+            {t('storefront.storeBlockedDesc')}
+          </p>
+          <div className="pt-8">
+            <Button variant="outline" onClick={() => window.location.href = '/'} className="w-full h-12 text-base rounded-xl border-border/50">
+              Back to Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={seller?.theme_color ? { '--theme-color': seller.theme_color } as React.CSSProperties : undefined}>
       {/* Store Header */}
       <header className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-brand opacity-90" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent_60%)]" />
+        {seller?.banner_url ? (
+          <div className="absolute inset-0">
+            <img src={seller.banner_url} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-black/40" />
+          </div>
+        ) : (
+          <>
+            <div className="absolute inset-0" style={{ backgroundColor: seller?.theme_color || '#8B5CF6', opacity: 0.9 }} />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent_60%)]" />
+          </>
+        )}
         <div className="relative max-w-5xl mx-auto px-6 py-12 text-white">
           <div className="flex items-center gap-3 mb-4 animate-fade-in">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
@@ -304,13 +370,26 @@ function StorefrontContent() {
                       ))}
                     </div>
                   )}
+                  {product.stock !== undefined && (
+                    <div className="mb-3">
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                        product.stock === 0
+                          ? 'bg-red-100 text-red-700'
+                          : product.stock <= (product.low_stock_threshold || 5)
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                        {product.stock === 0 ? 'Out of Stock' : `In Stock (${product.stock})`}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       className="flex-1 bg-gradient-brand hover:opacity-90 transition-opacity"
                       disabled
                     >
-                      <ShoppingBag className="w-3.5 h-3.5 mr-1.5" /> Coming Soon
+                      <ShoppingBag className="w-3.5 h-3.5 mr-1.5" /> {t('storefront.buyNow')}
                     </Button>
                     <Button
                       size="sm"
