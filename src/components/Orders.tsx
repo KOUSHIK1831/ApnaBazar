@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Order } from '@/hooks/useSeller';
 import { useLanguage } from '@/i18n/LanguageContext';
 import { Badge } from '@/components/ui/badge';
@@ -12,17 +13,27 @@ import {
   CheckCircle2, 
   Clock, 
   XCircle,
-  ChevronRight
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface OrdersProps {
   orders: Order[];
-  onUpdateStatus: (orderId: string, status: Order['status']) => Promise<any>;
+  onUpdateStatus: (orderId: string, status: Order['status']) => Promise<{ error: unknown }>;
 }
 
 export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
   const { t } = useLanguage();
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const handleStatusUpdate = async (orderId: string, status: Order['status']) => {
+    setUpdatingId(orderId);
+    try {
+      await onUpdateStatus(orderId, status);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -129,13 +140,13 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                 </div>
 
                 {/* Actions */}
-                <div className="p-5 flex flex-col justify-center gap-2 bg-muted/5 min-w-[200px]">
+                <div className="p-5 flex flex-col justify-center gap-2 bg-muted/5 min-w-[220px]">
                   <div className="flex gap-2 mb-1">
                     {order.buyer_phone && (
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        className="flex-1 bg-green-500/5 hover:bg-green-500/10 border-green-500/20 text-green-600 h-9"
+                        className="flex-1 bg-green-500/5 hover:bg-green-500/10 border-green-500/20 text-green-600 h-10"
                         onClick={() => window.open(getWhatsAppLink(order.buyer_phone!, order), '_blank')}
                       >
                         <MessageCircle className="w-4 h-4 mr-2" />
@@ -145,20 +156,22 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      className="flex-1 h-9 border-border/50"
+                      className="flex-1 h-10 border-border/50"
                       onClick={() => order.buyer_phone && window.open(`tel:${order.buyer_phone}`, '_self')}
                     >
                       <Phone className="w-4 h-4" />
                     </Button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-2">
                     {order.status === 'pending' && (
                       <Button 
                         size="sm" 
-                        className="col-span-2 bg-gradient-brand hover:opacity-90 transition-opacity h-9"
-                        onClick={() => onUpdateStatus(order.id, 'confirmed')}
+                        className="w-full bg-gradient-brand hover:opacity-90 transition-opacity h-10 font-bold"
+                        onClick={() => handleStatusUpdate(order.id, 'confirmed')}
+                        disabled={updatingId === order.id}
                       >
+                        {updatingId === order.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                         Confirm Order
                       </Button>
                     )}
@@ -166,9 +179,11 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                       <Button 
                         size="sm" 
                         variant="default"
-                        className="col-span-2 bg-green-600 hover:bg-green-700 h-9"
-                        onClick={() => onUpdateStatus(order.id, 'completed')}
+                        className="w-full bg-green-600 hover:bg-green-700 h-10 font-bold"
+                        onClick={() => handleStatusUpdate(order.id, 'completed')}
+                        disabled={updatingId === order.id}
                       >
+                        {updatingId === order.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                         Ship Order
                       </Button>
                     )}
@@ -176,10 +191,12 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                       <Button 
                         size="sm" 
                         variant="ghost" 
-                        className="col-span-2 text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50 h-8"
-                        onClick={() => onUpdateStatus(order.id, 'cancelled')}
+                        className="w-full text-xs text-muted-foreground hover:text-red-600 hover:bg-red-50 h-9"
+                        onClick={() => handleStatusUpdate(order.id, 'cancelled')}
+                        disabled={updatingId === order.id}
                       >
-                        Cancel
+                        {updatingId === order.id && <Loader2 className="w-3 h-3 animate-spin mr-2" />}
+                        Cancel Order
                       </Button>
                     )}
                   </div>
