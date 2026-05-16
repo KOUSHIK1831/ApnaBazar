@@ -126,15 +126,8 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
         const { error: uploadError } = await supabase.storage
           .from('uploads')
           .upload(path, fileToUpload);
-          .upload(path, fileToUpload);
 
         if (uploadError) {
-          console.error('Storage upload error:', uploadError);
-          toast({ 
-            title: 'Storage Error', 
-            description: `Failed to upload ${file.name}: ${uploadError.message}`, 
-            variant: 'destructive' 
-          });
           console.error('Storage upload error:', uploadError);
           toast({ 
             title: 'Storage Error', 
@@ -146,7 +139,6 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
 
         const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path);
 
-        const { data: fileRecord, error: insertError } = await supabase
         const { data: fileRecord, error: insertError } = await supabase
           .from('files')
           .insert({
@@ -192,7 +184,6 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
           await supabase.from('files').update({ status: 'processing' }).eq('id', fileId);
 
           const { data, error: invokeError } = await supabase.functions.invoke('digitize', {
-          const { data, error: invokeError } = await supabase.functions.invoke('digitize', {
             body: { imageUrl: fileUrl, sellerId },
           });
 
@@ -200,13 +191,9 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
             console.error('Edge function invocation error:', invokeError);
             throw new Error(`AI processing failed: ${invokeError.message || 'Unknown error'}`);
           }
-          if (invokeError) {
-            console.error('Edge function invocation error:', invokeError);
-            throw new Error(`AI processing failed: ${invokeError.message || 'Unknown error'}`);
-          }
 
           if (data?.product) {
-            const { error: productError } = reviews.push({
+            reviews.push({
               product: {
                 title: data.product.title,
                 description: data.product.description,
@@ -217,15 +204,6 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
               imageUrl: fileUrl,
               fileId,
             });
-            successCount++;
-          } else {
-            throw new Error('AI digitization did not return a valid product.');
-
-            if (productError) {
-              console.error('Product insertion error:', productError);
-              throw new Error(`Failed to save product: ${productError.message}`);
-            }
-            
             successCount++;
           } else {
             throw new Error('AI digitization did not return a valid product.');

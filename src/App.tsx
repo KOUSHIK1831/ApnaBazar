@@ -16,7 +16,6 @@ import OfflineBanner from "./components/OfflineBanner";
 
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import ThemeProvider from "@/components/ThemeProvider";
-import ThemeProvider from "@/components/ThemeProvider";
 
 const queryClient = new QueryClient();
 

@@ -92,54 +92,6 @@ function StorefrontContent() {
     openWhatsAppChat(`Hi, I'm interested in the products from ${seller?.store_name || 'your store'}. Can you share more details?`);
   };
 
-  useEffect(() => {
-    if (seller) {
-      trackEvent('storefront_visited', { slug, storeName: seller.store_name });
-    }
-  }, [seller, slug]);
-
-  const openWhatsAppChat = (message: string) => {
-    const contactNumber = seller?.contact_number || seller?.phone;
-    if (!contactNumber) {
-      toast({ title: t('storefront.contactUnavailable'), description: t('storefront.contactUnavailableDesc') });
-      return;
-    }
-
-    const cleanPhone = contactNumber.replace(/\D/g, '');
-    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
-  };
-
-  const handleWhatsAppChat = (product: Product) => {
-    trackEvent('whatsapp_clicked', { productId: product.id, productTitle: product.title });
-    openWhatsAppChat(
-      `Hi, I'm interested in ${product.title} from ${seller?.store_name || 'your store'}. The listed price is Rs. ${product.price}. Can you share more details?`
-    );
-  };
-
-  const handleSellerContact = () => {
-    openWhatsAppChat(`Hi, I'm interested in the products from ${seller?.store_name || 'your store'}. Can you share more details?`);
-  };
-
-  const openWhatsAppChat = (message: string) => {
-    const contactNumber = seller?.contact_number || seller?.phone;
-    if (!contactNumber) {
-      toast({ title: t('storefront.contactUnavailable'), description: t('storefront.contactUnavailableDesc') });
-      return;
-    }
-
-    const cleanPhone = contactNumber.replace(/\D/g, '');
-    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
-  };
-
-  const handleWhatsAppChat = (product: Product) => {
-    openWhatsAppChat(
-      `Hi, I'm interested in ${product.title} from ${seller?.store_name || 'your store'}. The listed price is Rs. ${product.price}. Can you share more details?`
-    );
-  };
-
-  const handleSellerContact = () => {
-    openWhatsAppChat(`Hi, I'm interested in the products from ${seller?.store_name || 'your store'}. Can you share more details?`);
-  };
 
   // Kept for when backend order placement is re-enabled.
   const handleOrder = async (product: Product) => {

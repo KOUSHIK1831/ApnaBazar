@@ -130,9 +130,8 @@ export default function BuyerAuthModal({ isOpen, onClose, onSuccess, storeName }
                   placeholder="Enter 6-digit OTP"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  className="text-center text-2xl tracking-widest"
+                  className="text-center text-2xl tracking-widest pr-10"
                   maxLength={6}
-                  className="pr-10"
                 />
                 <button
                   type="button"

@@ -45,16 +45,17 @@ export default function Dashboard() {
   const {
     seller,
     products,
-    orders,
+    files,
     orders,
     loading,
+    fetchSeller,
     fetchProducts,
+    fetchFiles,
     fetchOrders,
     createSeller,
     updateSellerProfile,
     updateProduct,
     deleteProduct,
-    updateOrderStatus,
     updateOrderStatus,
   } = useSeller();
   const [activeTab, setActiveTab] = useState<Tab>('products');
@@ -136,8 +137,6 @@ export default function Dashboard() {
               </div>
               <h1 className="text-xl font-bold text-foreground">ApnaBazar</h1>
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-              <ThemeToggle />
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <ThemeToggle />
               <LanguageSwitcher />

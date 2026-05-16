@@ -26,7 +26,6 @@ export default function Auth() {
   const [phoneDigits, setPhoneDigits] = useState('');
   const [loginEmail, setLoginEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -281,7 +280,10 @@ export default function Auth() {
                 )}
 
                 {loginMethod === 'password' && (
-                  <div className="space-y-4">
+                  <form 
+                    onSubmit={(e) => { e.preventDefault(); handlePasswordLogin(); }}
+                    className="space-y-4"
+                  >
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
@@ -311,15 +313,15 @@ export default function Auth() {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Prefer OTP?{' '}
-                      <button onClick={() => setLoginMethod('otp')} className="text-primary hover:underline font-medium">
+                      <button type="button" onClick={() => setLoginMethod('otp')} className="text-primary hover:underline font-medium">
                         Login with OTP
                       </button>
                     </p>
-                    <Button onClick={handlePasswordLogin} disabled={submitting || !loginEmail.trim() || !password} className="w-full">
+                    <Button type="submit" disabled={submitting || !loginEmail.trim() || !password} className="w-full">
                       {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                       {t('auth.signIn')}
                     </Button>
-                  </div>
+                  </form>
                 )}
 
                 <p className="mt-4 text-center text-sm text-muted-foreground">
@@ -333,10 +335,14 @@ export default function Auth() {
 
             {/* SIGNUP MODE */}
             {mode === 'signup' && (
-              <div className="space-y-4">
+              <form 
+                onSubmit={(e) => { e.preventDefault(); handleCreateAccount(); }}
+                className="space-y-4"
+              >
                 <div className="space-y-3 mb-6 p-1 bg-muted/30 rounded-2xl border border-border/50">
                   <div className="grid grid-cols-2 gap-1">
                     <button
+                      type="button"
                       onClick={() => setSignupRole('seller')}
                       className={`relative flex flex-col items-center gap-2 p-4 rounded-xl transition-all duration-300 ${
                         signupRole === 'seller' 
@@ -360,6 +366,7 @@ export default function Auth() {
                       )}
                     </button>
                     <button
+                      type="button"
                       onClick={() => setSignupRole('buyer')}
                       className={`relative flex flex-col items-center gap-2 p-4 rounded-xl transition-all duration-300 ${
                         signupRole === 'buyer' 
@@ -439,17 +446,17 @@ export default function Auth() {
                     {showSignupPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <Button onClick={handleCreateAccount} disabled={submitting} className="w-full">
+                <Button type="submit" disabled={submitting} className="w-full">
                   {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Create Account
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">
                   {t('auth.hasAccount')}{' '}
-                  <button onClick={() => { setMode('login'); resetForm(); }} className="text-primary hover:underline font-medium">
+                  <button type="button" onClick={() => { setMode('login'); resetForm(); }} className="text-primary hover:underline font-medium">
                     {t('auth.signIn')}
                   </button>
                 </p>
-              </div>
+              </form>
             )}
           </CardContent>
         </Card>

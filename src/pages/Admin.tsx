@@ -224,7 +224,7 @@ export default function Admin() {
   };
 
   const updateFeedbackStatus = async (id: string, status: string, admin_response?: string) => {
-    const updateData: any = { status };
+    const updateData: { status: string; admin_response?: string } = { status };
     if (admin_response !== undefined) {
       updateData.admin_response = admin_response;
     }
@@ -663,7 +663,7 @@ export default function Admin() {
                             <option value="closed">Closed</option>
                           </select>
                           <Badge variant={item.status === 'open' ? "destructive" : item.status === 'resolved' ? "default" : "outline"} className="text-[8px] uppercase">
-                            {t(`orders.status.${item.status}` as any)}
+                            {t(`orders.status.${item.status}` as never)}
                           </Badge>
                           <Button
                             variant="ghost"

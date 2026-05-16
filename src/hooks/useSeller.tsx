@@ -55,19 +55,6 @@ export interface Order {
   product?: Product;
 }
 
-export interface Order {
-  id: string;
-  buyer_id: string;
-  seller_id: string;
-  product_id: string;
-  quantity: number;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  buyer_name: string | null;
-  buyer_phone: string | null;
-  created_at: string;
-  product?: Product;
-}
-
 export function useSeller() {
   const { user } = useAuth();
   const [seller, setSeller] = useState<Seller | null>(null);
