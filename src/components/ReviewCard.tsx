@@ -58,10 +58,10 @@ export default function ReviewCard({ product, imageUrl, index, onApprove, onReje
       <div className="p-4 flex flex-col sm:flex-row gap-4">
         <div className="w-full sm:w-32 h-32 rounded-lg overflow-hidden bg-secondary shrink-0">
           {imageUrl ? (
-            <img src={imageUrl} alt={product.title} className="w-full h-full object-cover" />
+            <img src={imageUrl} alt={product.title} className="size-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+            <div className="size-full flex items-center justify-center">
+              <ImageIcon className="size-8 text-muted-foreground/30" />
             </div>
           )}
         </div>
@@ -70,49 +70,54 @@ export default function ReviewCard({ product, imageUrl, index, onApprove, onReje
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Title</label>
+                  <label htmlFor={`title-${product.id}`} className="text-xs font-medium text-muted-foreground">Title</label>
                   <Input
+                    id={`title-${product.id}`}
                     value={edited.title}
-                    onChange={(e) => setEdited({ ...edited, title: e.target.value })}
+                    onChange={(e) => setEdited(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Title"
                     className={isLowConfidence('title') ? "border-amber-300 bg-amber-50/30" : ""}
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Price (₹)</label>
+                  <label htmlFor={`price-${product.id}`} className="text-xs font-medium text-muted-foreground">Price (₹)</label>
                   <Input
+                    id={`price-${product.id}`}
                     type="number"
                     value={edited.price}
-                    onChange={(e) => setEdited({ ...edited, price: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setEdited(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
                     placeholder="Price"
                     className={isLowConfidence('price') ? "border-amber-300 bg-amber-50/30" : ""}
                   />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Category</label>
+                <label htmlFor={`category-${product.id}`} className="text-xs font-medium text-muted-foreground">Category</label>
                 <Input
+                  id={`category-${product.id}`}
                   value={edited.category}
-                  onChange={(e) => setEdited({ ...edited, category: e.target.value })}
+                  onChange={(e) => setEdited(prev => ({ ...prev, category: e.target.value }))}
                   placeholder="Category"
                   className={isLowConfidence('category') ? "border-amber-300 bg-amber-50/30" : ""}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Description</label>
+                <label htmlFor={`description-${product.id}`} className="text-xs font-medium text-muted-foreground">Description</label>
                 <Textarea
+                  id={`description-${product.id}`}
                   value={edited.description}
-                  onChange={(e) => setEdited({ ...edited, description: e.target.value })}
+                  onChange={(e) => setEdited(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Description"
                   rows={2}
                   className={isLowConfidence('description') ? "border-amber-300 bg-amber-50/30" : ""}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Tags (comma separated)</label>
+                <label htmlFor={`tags-${product.id}`} className="text-xs font-medium text-muted-foreground">Tags (comma separated)</label>
                 <Input
+                  id={`tags-${product.id}`}
                   value={edited.tags.join(", ")}
-                  onChange={(e) => setEdited({ ...edited, tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) })}
+                  onChange={(e) => setEdited(prev => ({ ...prev, tags: e.target.value.split(",").flatMap((t) => { const trimmed = t.trim(); return trimmed ? [trimmed] : []; }) }))}
                   placeholder="tag1, tag2, tag3"
                   className={isLowConfidence('tags') ? "border-amber-300 bg-amber-50/30" : ""}
                 />
@@ -151,7 +156,7 @@ export default function ReviewCard({ product, imageUrl, index, onApprove, onReje
             {editing ? (
               <>
                 <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700" onClick={handleSave}>
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Save & Approve
+                  <CheckCircle2 className="size-3.5 mr-1.5" /> Save & Approve
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => { setEdited({ ...product }); setEditing(false); }}>
                   Cancel
@@ -160,13 +165,13 @@ export default function ReviewCard({ product, imageUrl, index, onApprove, onReje
             ) : (
               <>
                 <Button size="sm" className="bg-gradient-brand hover:opacity-90 transition-opacity" onClick={() => onApprove(product)}>
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Approve
+                  <CheckCircle2 className="size-3.5 mr-1.5" /> Approve
                 </Button>
                 <Button size="sm" variant="outline" className="border-border/50" onClick={() => setEditing(true)}>
-                  <Edit3 className="w-3.5 h-3.5 mr-1.5" /> Edit
+                  <Edit3 className="size-3.5 mr-1.5" /> Edit
                 </Button>
                 <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={onReject}>
-                  <XCircle className="w-3.5 h-3.5 mr-1.5" /> Reject
+                  <XCircle className="size-3.5 mr-1.5" /> Reject
                 </Button>
               </>
             )}

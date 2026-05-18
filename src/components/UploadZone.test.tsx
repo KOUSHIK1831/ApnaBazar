@@ -40,7 +40,7 @@ vi.mock("@/integrations/supabase/client", () => ({
       invoke: invokeMock,
     },
     from: vi.fn((table: string) => {
-      if (table === "files") {
+      if (table === "files" || table === "products") {
         return {
           insert: insertMock,
           update: updateMock,
@@ -50,6 +50,7 @@ vi.mock("@/integrations/supabase/client", () => ({
         eq: eqMock,
       };
     }),
+
   },
 }));
 
@@ -120,7 +121,12 @@ describe("UploadZone", () => {
 
     fireEvent.change(input, { target: { files: [file] } });
 
+    // Step 1: Review and Approve
+    await screen.findByText("Review Products");
+    fireEvent.click(screen.getByRole("button", { name: /Approve/i }));
+
     await screen.findByText("upload.complete");
+
 
     expect(uploadMock).toHaveBeenCalled();
     expect(invokeMock).toHaveBeenCalledWith("digitize", {

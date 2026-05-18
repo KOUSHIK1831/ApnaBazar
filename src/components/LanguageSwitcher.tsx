@@ -35,7 +35,7 @@ export default function LanguageSwitcher({ variant = 'default', id }: { variant?
         }`}
         aria-label="Switch language"
       >
-        <Globe className={variant === 'compact' ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
+        <Globe className={variant === 'compact' ? 'size-3' : 'size-3.5'} />
         <span className="font-medium">{current.short}</span>
       </button>
 
@@ -48,11 +48,7 @@ export default function LanguageSwitcher({ variant = 'default', id }: { variant?
                 setLanguage(lang.code);
                 setOpen(false);
               }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-accent/10 ${
-                language === lang.code
-                  ? 'font-semibold text-primary bg-primary/5'
-                  : 'text-foreground'
-              }`}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-accent/10 ${ language === lang.code ? 'font-semibold text-primary bg-primary/5' : 'text-foreground' }`}
             >
               <span className="text-xs font-mono w-5">{lang.short}</span>
               <span>{lang.label}</span>

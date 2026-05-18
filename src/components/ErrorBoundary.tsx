@@ -36,10 +36,10 @@ class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-background">
           <div className="max-w-md w-full border border-border/50 rounded-2xl p-8 bg-card shadow-surface text-center animate-fade-in">
-            <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <AlertTriangle className="w-8 h-8 text-destructive" />
+            <div className="size-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle className="size-8 text-destructive" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h1>
+            <h1 className="text-2xl font-semibold text-foreground mb-2">Something went wrong</h1>
             <p className="text-muted-foreground mb-8">
               We encountered an unexpected error. Please try refreshing the page.
             </p>
@@ -52,7 +52,7 @@ class ErrorBoundary extends Component<Props, State> {
               onClick={this.handleReset}
               className="w-full bg-gradient-brand hover:opacity-90 transition-opacity"
             >
-              <RefreshCcw className="w-4 h-4 mr-2" />
+              <RefreshCcw className="size-4 mr-2" />
               Refresh Application
             </Button>
           </div>

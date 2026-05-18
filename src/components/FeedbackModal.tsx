@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useSeller } from '@/hooks/useSeller';
@@ -28,21 +28,52 @@ interface FeedbackItem {
   created_at: string;
 }
 
+type FeedbackState = {
+  content: string;
+  isSubmitting: boolean;
+  isOpen: boolean;
+  myFeedback: FeedbackItem[];
+  loadingHistory: boolean;
+};
+
+type FeedbackAction = 
+  | { type: 'SET_CONTENT'; value: string }
+  | { type: 'SET_SUBMITTING'; value: boolean }
+  | { type: 'SET_OPEN'; value: boolean }
+  | { type: 'SET_HISTORY'; value: FeedbackItem[] }
+  | { type: 'SET_LOADING'; value: boolean }
+  | { type: 'RESET' };
+
+function feedbackReducer(state: FeedbackState, action: FeedbackAction): FeedbackState {
+  switch (action.type) {
+    case 'SET_CONTENT': return { ...state, content: action.value };
+    case 'SET_SUBMITTING': return { ...state, isSubmitting: action.value };
+    case 'SET_OPEN': return { ...state, isOpen: action.value };
+    case 'SET_HISTORY': return { ...state, myFeedback: action.value };
+    case 'SET_LOADING': return { ...state, loadingHistory: action.value };
+    case 'RESET': return { ...state, content: '', isSubmitting: false };
+    default: return state;
+  }
+}
+
 export default function FeedbackModal() {
   const { user } = useAuth();
   const { seller } = useSeller();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const [myFeedback, setMyFeedback] = useState<FeedbackItem[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [state, dispatch] = useReducer(feedbackReducer, {
+    content: '',
+    isSubmitting: false,
+    isOpen: false,
+    myFeedback: [],
+    loadingHistory: false,
+  });
 
   useEffect(() => {
-    if (isOpen && user) {
+    let channel: any = null;
+    if (state.isOpen && user) {
       const fetchMyFeedback = async () => {
-        setLoadingHistory(true);
+        dispatch({ type: 'SET_LOADING', value: true });
         const { data, error } = await supabase
           .from('feedback')
           .select('*')
@@ -50,14 +81,14 @@ export default function FeedbackModal() {
           .order('created_at', { ascending: false });
 
         if (!error) {
-          setMyFeedback(data || []);
+          dispatch({ type: 'SET_HISTORY', value: data || [] });
         }
-        setLoadingHistory(false);
+        dispatch({ type: 'SET_LOADING', value: false });
       };
 
       fetchMyFeedback();
 
-      const channel = supabase
+      channel = supabase
         .channel('my-feedback-realtime')
         .on(
           'postgres_changes',
@@ -72,17 +103,18 @@ export default function FeedbackModal() {
           }
         )
         .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
-  }, [isOpen, user]);
+    return () => {
+      if (channel) {
+        channel.unsubscribe();
+      }
+    };
+  }, [state.isOpen, user]);
 
   const handleSubmit = async () => {
-    if (!content.trim()) return;
+    if (!state.content.trim()) return;
 
-    setIsSubmitting(true);
+    dispatch({ type: 'SET_SUBMITTING', value: true });
     try {
       const feedbackData: {
         user_id: string | undefined;
@@ -91,7 +123,7 @@ export default function FeedbackModal() {
         seller_id?: string;
       } = {
         user_id: user?.id,
-        content: content.trim(),
+        content: state.content.trim(),
         status: 'open',
       };
 
@@ -111,8 +143,7 @@ export default function FeedbackModal() {
         title: t('feedback.success'),
         variant: 'default',
       });
-      setContent('');
-      // The realtime subscription will refresh history
+      dispatch({ type: 'RESET' });
     } catch (err: unknown) {
       console.error('Feedback: Detailed error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Could not submit feedback. Please try again.';
@@ -122,12 +153,16 @@ export default function FeedbackModal() {
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false);
+      dispatch({ type: 'SET_SUBMITTING', value: false });
     }
   };
 
+  const { content, isSubmitting, isOpen, myFeedback, loadingHistory } = state;
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => dispatch({ type: 'SET_OPEN', value: open })}>
+
+
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -136,16 +171,16 @@ export default function FeedbackModal() {
           title={t('feedback.title')}
           id="tour-feedback"
         >
-          <Bug className="w-4 h-4" />
+          <Bug className="size-4" />
           <span className="hidden sm:inline text-xs font-medium">Feedback</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px] h-[600px] flex flex-col p-0">
-        <Tabs defaultValue="send" className="w-full flex flex-col h-full">
+        <Tabs defaultValue="send" className="size-full flex flex-col">
           <div className="p-6 pb-2">
             <DialogHeader className="mb-4">
               <DialogTitle className="flex items-center gap-2">
-                <MessageSquarePlus className="w-5 h-5 text-primary" />
+                <MessageSquarePlus className="size-5 text-primary" />
                 {t('feedback.title')}
               </DialogTitle>
               <DialogDescription>
@@ -154,10 +189,10 @@ export default function FeedbackModal() {
             </DialogHeader>
             <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1">
               <TabsTrigger value="send" className="text-xs">
-                <MessageSquare className="w-3.5 h-3.5 mr-2" /> {t('feedback.send')}
+                <MessageSquare className="size-3.5 mr-2" /> {t('feedback.send')}
               </TabsTrigger>
               <TabsTrigger value="history" className="text-xs">
-                <History className="w-3.5 h-3.5 mr-2" /> {t('feedback.history')} ({myFeedback.length})
+                <History className="size-3.5 mr-2" /> {t('feedback.history')} ({myFeedback.length})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -166,8 +201,9 @@ export default function FeedbackModal() {
             <div className="flex-1 py-4">
               <Textarea
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={(e) => dispatch({ type: 'SET_CONTENT', value: e.target.value })}
                 placeholder={t('feedback.placeholder')}
+
                 className="h-full min-h-[250px] resize-none border-border/50 focus-visible:ring-primary/20 bg-background text-foreground"
               />
             </div>
@@ -189,39 +225,51 @@ export default function FeedbackModal() {
               </div>
             ) : myFeedback.length === 0 ? (
               <div className="text-center py-20 bg-muted/10 rounded-xl border border-dashed border-border/50">
-                <History className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                <History className="size-10 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">{t('feedback.noFeedback')}</p>
               </div>
             ) : (
               myFeedback.map((item) => (
-                <Card key={item.id} className="p-4 border-border/50 shadow-surface space-y-3 bg-card text-card-foreground">
-                  <div className="flex items-center justify-between">
-                    <Badge variant={
-                      item.status === 'open' ? "destructive" : 
-                      item.status === 'resolved' ? "default" : "secondary"
-                    } className="text-[10px] uppercase">
-                      {item.status.replace('_', ' ')}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {new Date(item.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-foreground italic leading-relaxed">"{item.content}"</p>
-                  
-                  {item.admin_response && (
-                    <div className="mt-3 pt-3 border-t border-border/30 bg-primary/5 -mx-4 -mb-4 p-4">
-                      <p className="text-[10px] font-bold text-primary flex items-center gap-1 mb-1 uppercase tracking-wider">
-                        <ShieldCheck className="w-3 h-3" /> {t('feedback.adminResponse')}
-                      </p>
-                      <p className="text-sm text-foreground leading-relaxed">{item.admin_response}</p>
-                    </div>
-                  )}
-                </Card>
+                <FeedbackCard key={item.id} item={item} t={t} />
               ))
             )}
           </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function FeedbackCard({ item, t }: { item: any, t: any }) {
+  const [formattedDate, setFormattedDate] = React.useState("");
+
+  React.useEffect(() => {
+    setFormattedDate(new Date(item.created_at).toLocaleDateString());
+  }, [item.created_at]);
+
+  return (
+    <Card className="p-4 border-border/50 shadow-surface space-y-3 bg-card text-card-foreground">
+      <div className="flex items-center justify-between">
+        <Badge variant={
+          item.status === 'open' ? "destructive" : 
+          item.status === 'resolved' ? "default" : "secondary"
+        } className="text-[10px] uppercase">
+          {item.status.replace('_', ' ')}
+        </Badge>
+        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <Clock className="size-3" /> <span>{formattedDate}</span>
+        </span>
+      </div>
+      <p className="text-sm text-foreground italic leading-relaxed">"{item.content}"</p>
+      
+      {item.admin_response && (
+        <div className="mt-3 pt-3 border-t border-border/30 bg-primary/5 -mx-4 -mb-4 p-4">
+          <p className="text-[10px] font-bold text-primary flex items-center gap-1 mb-1 uppercase tracking-wider">
+            <ShieldCheck className="size-3" /> {t('feedback.adminResponse')}
+          </p>
+          <p className="text-sm text-foreground leading-relaxed">{item.admin_response}</p>
+        </div>
+      )}
+    </Card>
   );
 }

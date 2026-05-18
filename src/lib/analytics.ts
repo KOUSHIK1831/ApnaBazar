@@ -28,12 +28,3 @@ export function trackEvent(event: string, properties?: Record<string, unknown>) 
     // Silently ignore
   }
 }
-
-export function identifyUser(userId: string, traits?: Record<string, unknown>) {
-  if (!initialized) return;
-  try {
-    posthog.identify(userId, traits);
-  } catch {
-    // Silently ignore
-  }
-}

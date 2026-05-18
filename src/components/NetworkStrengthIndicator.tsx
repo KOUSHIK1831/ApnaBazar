@@ -36,10 +36,8 @@ function SignalBars({
     <div className="flex items-end gap-[2px]">
       {BAR_HEIGHTS.map((height, i) => (
         <div
-          key={i}
-          className={`w-[3px] rounded-sm ${height} transition-colors duration-500 ${
-            i < activeBars ? bgColor : 'bg-gray-300'
-          }`}
+          key={height}
+          className={`w-[3px] rounded-sm ${height} transition-colors duration-500 ${ i < activeBars ? bgColor : 'bg-gray-300' }`}
         />
       ))}
     </div>
@@ -61,7 +59,7 @@ export function NetworkStrengthIndicator() {
       <p className="font-semibold">{config.label}</p>
       {mbpsLabel && <p>Speed: {mbpsLabel}</p>}
       {!isOnline && <p>No internet connection</p>}
-      {status === 'unknown' && isOnline && <p>Measuring speed...</p>}
+      {status === 'unknown' && isOnline && <p>Measuring speed…</p>}
     </div>
   );
 
@@ -75,7 +73,7 @@ export function NetworkStrengthIndicator() {
             onClick={() => setOpen((v) => !v)}
           >
             {status === 'offline' || status === 'unknown' ? (
-              <WifiOff className="w-5 h-5 transition-colors duration-500" />
+              <WifiOff className="size-5 transition-colors duration-500" />
             ) : (
               <SignalBars activeBars={config.bars} color={config.color} />
             )}

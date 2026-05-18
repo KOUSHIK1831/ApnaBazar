@@ -14,12 +14,9 @@ export default function Index() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === 'seller') {
-        navigate('/dashboard');
-      } else if (user.role === 'admin') {
-        navigate('/admin');
-      }
-      // Buyers stay on the landing page
+      if (user.role === 'seller') navigate('/dashboard');
+      else if (user.role === 'admin') navigate('/admin');
+      else if (user.role === 'buyer') navigate('/buyer');
     }
   }, [user, loading, navigate]);
 
@@ -29,8 +26,8 @@ export default function Index() {
       <nav className="border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-brand rounded-lg flex items-center justify-center">
-              <Store className="w-4 h-4 text-white" />
+            <div className="size-8 bg-gradient-brand rounded-lg flex items-center justify-center">
+              <Store className="size-4 text-white" />
             </div>
             <span className="text-lg font-bold text-foreground tracking-tight">ApnaBazar</span>
           </div>
@@ -51,7 +48,7 @@ export default function Index() {
           <img 
             src="https://images.unsplash.com/photo-1590736704728-f4730bb30770?auto=format&fit=crop&q=80&w=2000" 
             alt="Indian Market" 
-            className="w-full h-full object-cover"
+            className="size-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/40" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
@@ -60,10 +57,10 @@ export default function Index() {
         <div className="max-w-6xl mx-auto px-6 py-24 relative z-10">
           <div className="max-w-2xl animate-slide-up">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/20 text-primary-foreground dark:text-primary rounded-full text-xs font-semibold mb-6 backdrop-blur-md border border-white/10">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <Sparkles className="size-3.5 text-primary" />
               AI-Powered Seller Platform
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground leading-[1.05] mb-6">
+            <h1 className="text-5xl md:text-7xl font-semibold tracking-tight text-foreground leading-[1.05] mb-6">
               {t('landing.hero.title')} <br className="hidden md:block" />
               <span className="text-gradient">{t('landing.hero.titleHighlight')}</span>
             </h1>
@@ -72,7 +69,7 @@ export default function Index() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Button size="lg" onClick={() => navigate('/auth')} className="bg-gradient-brand hover:opacity-90 transition-opacity text-base px-8 shadow-surface-lg">
-                {t('landing.hero.cta')} <ArrowRight className="w-4 h-4 ml-2" />
+                {t('landing.hero.cta')} <ArrowRight className="size-4 ml-2" />
               </Button>
             </div>
           </div>
@@ -83,8 +80,8 @@ export default function Index() {
       <section className="border-t border-border/50 bg-card/50">
         <div className="max-w-6xl mx-auto px-6 py-20">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-foreground mb-3">{t('landing.features.title')}</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">From uploading photos to a live storefront — we handle the heavy lifting with AI</p>
+            <h2 className="text-3xl font-semibold text-foreground mb-3">{t('landing.features.title')}</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">From uploading photos to a live storefront - we handle the heavy lifting with AI</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
@@ -114,8 +111,8 @@ export default function Index() {
                 key={feature.title}
                 className="group p-6 rounded-xl border border-border/50 bg-card hover:shadow-surface-lg hover:border-border transition-all duration-300"
               >
-                <div className={`w-11 h-11 ${feature.bg} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                  <feature.icon className={`w-5 h-5 ${feature.color}`} />
+                <div className={`size-11 ${feature.bg} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                  <feature.icon className={`size-5 ${feature.color}`} />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">{feature.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
@@ -137,7 +134,7 @@ export default function Index() {
               { icon: Globe, label: 'Share Anywhere' },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-2 text-muted-foreground">
-                <item.icon className="w-4 h-4" />
+                <item.icon className="size-4" />
                 <span className="text-sm font-medium">{item.label}</span>
               </div>
             ))}
@@ -149,8 +146,8 @@ export default function Index() {
       <footer className="border-t border-border/50 bg-card/50">
         <div className="max-w-6xl mx-auto px-6 py-8 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gradient-brand rounded-md flex items-center justify-center">
-              <Store className="w-3 h-3 text-white" />
+            <div className="size-6 bg-gradient-brand rounded-md flex items-center justify-center">
+              <Store className="size-3 text-white" />
             </div>
             <span className="text-sm font-semibold text-foreground">{t('common.appName')}</span>
           </div>
