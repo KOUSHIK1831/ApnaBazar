@@ -3,17 +3,22 @@ import { describe, expect, it, vi } from "vitest";
 
 import BuyerAuthModal from "./BuyerAuthModal";
 
-const { signInMock, signUpMock } = vi.hoisted(() => ({
-  signInMock: vi.fn(),
+const { sendOtpMock, verifyOtpMock, signUpMock } = vi.hoisted(() => ({
+  sendOtpMock: vi.fn(),
+  verifyOtpMock: vi.fn(() => ({ error: null })),
   signUpMock: vi.fn(),
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
-    signIn: signInMock,
+    signIn: {
+      sendOtp: sendOtpMock,
+      verifyOtp: verifyOtpMock,
+    },
     signUp: signUpMock,
   }),
 }));
+
 
 vi.mock("@/i18n/LanguageContext", () => ({
   useLanguage: () => ({ t: (key: string) => key }),
@@ -41,8 +46,10 @@ describe("BuyerAuthModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send OTP" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/OTP sent to \+91 9876543210/i)).toBeInTheDocument();
+      expect(screen.getByText(/OTP sent to/i)).toBeInTheDocument();
+      expect(screen.getByText(/\+91 9876543210/)).toBeInTheDocument();
     });
+
 
     // Step 2: Verify OTP
     fireEvent.change(screen.getByPlaceholderText("Enter 6-digit OTP"), {

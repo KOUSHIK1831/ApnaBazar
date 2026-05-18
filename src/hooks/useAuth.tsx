@@ -1,6 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useReducer } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { BACKEND_URL } from '@/lib/constants';
 
 const CREDENTIALS_KEY = 'apnabazar_credentials';
 const PHONE_EMAIL_MAP_KEY = 'apnabazar_phone_email_map';
@@ -90,52 +89,19 @@ function normalizePhone(phone: string) {
   return digits.startsWith('91') && digits.length === 12 ? `+${digits}` : `+91${digits}`;
 }
 
-async function readResponseBody(res: Response) {
-  const contentType = res.headers.get('content-type') || '';
-
-  if (contentType.includes('application/json')) {
-    try {
-      return await res.json();
-    } catch {
-      return null;
-    }
-  }
-
-  const text = await res.text().catch(() => '');
-  if (!text) return null;
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
-
-function getAuthErrorMessage(body: unknown, fallback: string) {
-  if (typeof body === 'string') {
-    return body.trim() || fallback;
-  }
-
-  if (body && typeof body === 'object') {
-    const record = body as Record<string, unknown>;
-    const message = record.message || record.detail || record.error;
-    if (typeof message === 'string' && message.trim()) {
-      return message;
-    }
-  }
-
-  return fallback;
-}
-
 function normalizePasswordLoginError(error: Error) {
   const msg = error.message || 'Login failed';
-  if (/invalid login credentials/i.test(msg)) {
-    return new Error('Invalid email or password. If this is your first login for this email, create the account once from Create Account, then sign in.');
+  if (/invalid login credentials|user not found|email not confirmed/i.test(msg)) {
+    return new Error('Account not found or incorrect password. Please check your credentials or create a new account.');
+  }
+  if (/network error|fetch|network/i.test(msg)) {
+    return new Error('Unable to connect. Please check your internet connection and try again.');
   }
   return error;
 }
 
 async function ensureSupabaseSession(email: string, password: string) {
+  if (!email || !password) return;
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user?.email === email) return;
 
@@ -145,16 +111,34 @@ async function ensureSupabaseSession(email: string, password: string) {
   }
 }
 
+type AuthState = {
+  user: AuthUser | null;
+  loading: boolean;
+};
+
+type AuthAction = 
+  | { type: 'SET_AUTH', payload: { user: AuthUser | null, loading: boolean } }
+  | { type: 'SET_LOADING', payload: boolean };
+
+function authReducer(state: AuthState, action: AuthAction): AuthState {
+  switch (action.type) {
+    case 'SET_AUTH': return { ...state, user: action.payload.user, loading: action.payload.loading };
+    case 'SET_LOADING': return { ...state, loading: action.payload };
+    default: return state;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, dispatch] = useReducer(authReducer, {
+    user: null,
+    loading: true,
+  });
 
   useEffect(() => {
     const restore = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const meta = session.user.user_metadata || {};
-        // Load profile role and block status from `profiles` table
         let role = meta.role || 'seller';
         let is_blocked = false;
         try {
@@ -164,24 +148,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             is_blocked = !!(profile as { is_blocked?: boolean }).is_blocked;
           }
         } catch (e) {
-          // ignore — fall back to metadata
+          // Profile missing - create one with role from metadata
+          try {
+            await supabase.from('profiles').upsert({
+              id: session.user.id,
+              email: session.user.email,
+              role: meta.role || 'seller',
+            }, { onConflict: 'id' }).maybeSingle();
+          } catch (e2) {
+            // ignore
+          }
         }
 
         if (is_blocked) {
           await supabase.auth.signOut();
-          setUser(null);
+          dispatch({ type: 'SET_AUTH', payload: { user: null, loading: false } });
         } else {
-          setUser({
-            id: session.user.id,
-            email: session.user.email,
-            name: meta.name || '',
-            phone: meta.phone || meta.phone_number || '',
-            role,
-            is_blocked,
+          dispatch({
+            type: 'SET_AUTH',
+            payload: {
+              user: {
+                id: session.user.id,
+                email: session.user.email,
+                name: meta.name || '',
+                phone: meta.phone || meta.phone_number || '',
+                role,
+                is_blocked,
+              },
+              loading: false,
+            },
           });
         }
+      } else {
+        dispatch({ type: 'SET_AUTH', payload: { user: null, loading: false } });
       }
-      setLoading(false);
     };
     restore();
 
@@ -198,31 +198,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               is_blocked = !!(profile as { is_blocked?: boolean }).is_blocked;
             }
           } catch (e) {
-            // ignore
+            // Profile missing - create one with role from metadata
+            try {
+              await supabase.from('profiles').upsert({
+                id: session.user.id,
+                email: session.user.email,
+                role: meta.role || 'seller',
+              }, { onConflict: 'id' }).maybeSingle();
+            } catch (e2) {
+              // ignore
+            }
           }
 
           if (is_blocked) {
             await supabase.auth.signOut();
-            setUser(null);
+            dispatch({ type: 'SET_AUTH', payload: { user: null, loading: false } });
           } else {
-            setUser({
-              id: session.user.id,
-              email: session.user.email,
-              name: meta.name || '',
-              phone: meta.phone || meta.phone_number || '',
-              role,
-              is_blocked,
+            dispatch({
+              type: 'SET_AUTH',
+              payload: {
+                user: {
+                  id: session.user.id,
+                  email: session.user.email,
+                  name: meta.name || '',
+                  phone: meta.phone || meta.phone_number || '',
+                  role,
+                  is_blocked,
+                },
+                loading: false,
+              },
             });
           }
         })();
       } else {
-        setUser(null);
+        dispatch({ type: 'SET_AUTH', payload: { user: null, loading: false } });
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
   const signUp = async (phone: string, name: string, email: string, password: string, isBuyer = false) => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -244,8 +258,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       storePhoneEmail(phone, email);
       storeCredentials(email, password);
 
+      // Ensure a session exists before profile upsert — RLS requires auth.uid()
       if (!data.session) {
         await ensureSupabaseSession(email, password);
+      }
+
+      if (data.user) {
+        try {
+          const { error: upsertErr } = await supabase.from('profiles').upsert({
+            id: data.user.id,
+            email,
+            role: isBuyer ? 'buyer' : 'seller',
+          }, { onConflict: 'id' });
+          if (upsertErr) {
+            console.warn('[Auth] Profile upsert warning (non-fatal):', upsertErr.message);
+          }
+        } catch (profileErr) {
+          console.warn('[Auth] Profile upsert exception (non-fatal):', profileErr);
+        }
       }
 
       return { error: null };
@@ -255,48 +285,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const sendOtp = async (phone: string) => {
-    const res = await fetch(`${BACKEND_URL}/auth/login/send-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: normalizePhone(phone) }),
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: normalizePhone(phone),
     });
-    if (!res.ok) {
-      const body = await readResponseBody(res);
-      throw new Error(getAuthErrorMessage(body, 'Failed to send OTP'));
+    if (error) {
+      throw new Error(error.message);
     }
   };
 
   const verifyOtp = async (phone: string, otp: string) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/auth/login/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: normalizePhone(phone), otp_code: otp }),
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: normalizePhone(phone),
+        token: otp,
+        type: 'sms',
       });
-      const data = await readResponseBody(res);
-      const response = data && typeof data === 'object' ? data as Record<string, unknown> : null;
-      if (res.ok && typeof response?.access_token === 'string') {
-        const digits = phone.replace(/\D/g, '');
-        const email = getEmailForPhone(digits) || `${digits}@apnabazar.app`;
-        const password = `apna_${digits}_bazar`; // Deterministic password for OTP-only users
+      if (error) return { error: new Error(error.message) };
 
-        // Try login
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        
-        if (signInError) {
-          // If login fails, try signing up (they might be a new buyer)
-          const { error: signUpError } = await signUp(phone, `Buyer ${digits.slice(-4)}`, email, password, true);
-          if (signUpError) {
-            console.error('[Auth] Buyer auto-signup failed:', signUpError.message);
-          }
-        } else {
-          storeCredentials(email, password);
-          storePhoneEmail(phone, email);
-        }
-        
-        return { error: null };
+      // Store phone→email mapping if session has an email
+      if (data.session?.user?.email) {
+        storePhoneEmail(phone, data.session.user.email);
       }
-      return { error: new Error(getAuthErrorMessage(data, 'OTP verification failed')) };
+
+      return { error: null };
     } catch (err) {
       return { error: err instanceof Error ? err : new Error('Network error') };
     }
@@ -326,8 +337,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user,
-        loading,
+        user: state.user,
+        loading: state.loading,
         signUp,
         signIn: { sendOtp, verifyOtp, password: passwordLogin },
         signOut,
