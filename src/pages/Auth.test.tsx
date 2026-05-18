@@ -15,12 +15,17 @@ const {
   navigateMock: vi.fn(),
 }));
 
+let mockUser: any = null;
+
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
+    user: mockUser,
+    loading: false,
     signIn: { password: signInMock, sendOtp: vi.fn(), verifyOtp: vi.fn() },
     signUp: signUpMock,
   }),
 }));
+
 
 vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: toastMock }),
@@ -43,10 +48,18 @@ vi.mock("@/i18n/LanguageContext", () => ({
 }));
 
 describe("Auth page", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUser = null;
+  });
+
   it("signs in and navigates to the dashboard", async () => {
+
     signInMock.mockResolvedValue({ error: null });
+    mockUser = { role: "seller" };
 
     render(<Auth />);
+
 
     fireEvent.change(screen.getByPlaceholderText("Enter your email"), {
       target: { value: "seller@example.com" },
@@ -66,7 +79,16 @@ describe("Auth page", () => {
     signInMock.mockResolvedValue({ error: { message: "Invalid login" } });
 
     render(<Auth />);
+    
+    fireEvent.change(screen.getByPlaceholderText("Enter your email"), {
+      target: { value: "wrong@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Enter your password"), {
+      target: { value: "wrongpass" },
+    });
+    
     fireEvent.submit(screen.getAllByRole("button", { name: "auth.signIn" }).slice(-1)[0].closest("form")!);
+
 
     await waitFor(() => {
       expect(toastMock).toHaveBeenCalledWith(
@@ -85,13 +107,29 @@ describe("Auth page", () => {
     render(<Auth />);
 
     fireEvent.click(screen.getAllByRole("button", { name: "auth.signUp" }).slice(-1)[0]);
+    
+    fireEvent.change(screen.getByPlaceholderText("Enter 10-digit phone"), {
+      target: { value: "9876543210" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Full Name"), {
+      target: { value: "New Seller" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Email Address"), {
+      target: { value: "new@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Create Password (min 6 chars)"), {
+      target: { value: "password123" },
+    });
+    
     fireEvent.submit(screen.getAllByRole("button", { name: "auth.signUp" }).slice(-1)[0].closest("form")!);
+
 
     await waitFor(() => {
       expect(signUpMock).toHaveBeenCalled();
       expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Account created" }),
+        expect.objectContaining({ title: "Account Created" }),
       );
     });
+
   });
 });
