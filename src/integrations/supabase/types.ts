@@ -99,6 +99,8 @@ export type Database = {
           buyer_id: string | null
           buyer_name: string | null
           buyer_phone: string | null
+          confirmed_at: string | null
+          completed_at: string | null
           created_at: string
           id: string
           product_id: string | null
@@ -110,6 +112,8 @@ export type Database = {
           buyer_id?: string | null
           buyer_name?: string | null
           buyer_phone?: string | null
+          confirmed_at?: string | null
+          completed_at?: string | null
           created_at?: string
           id?: string
           product_id?: string | null
@@ -121,6 +125,8 @@ export type Database = {
           buyer_id?: string | null
           buyer_name?: string | null
           buyer_phone?: string | null
+          confirmed_at?: string | null
+          completed_at?: string | null
           created_at?: string
           id?: string
           product_id?: string | null
@@ -152,6 +158,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          low_stock_threshold: number | null
           price: number
           seller_id: string
           stock: number
@@ -164,6 +171,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          low_stock_threshold?: number | null
           price: number
           seller_id: string
           stock?: number
@@ -176,6 +184,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          low_stock_threshold?: number | null
           price?: number
           seller_id?: string
           stock?: number
@@ -221,39 +230,54 @@ export type Database = {
       }
       sellers: {
         Row: {
+          banner_url: string | null
+          contact_number: string | null
           created_at: string
           full_name: string | null
           id: string
           location: string | null
+          maps_url: string | null
           phone: string | null
           status: string | null
           store_description: string | null
           store_name: string | null
+          store_number: string | null
           store_slug: string | null
+          theme_color: string | null
           user_id: string
         }
         Insert: {
+          banner_url?: string | null
+          contact_number?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
           location?: string | null
+          maps_url?: string | null
           phone?: string | null
           status?: string | null
           store_description?: string | null
           store_name?: string | null
+          store_number?: string | null
           store_slug?: string | null
+          theme_color?: string | null
           user_id: string
         }
         Update: {
+          banner_url?: string | null
+          contact_number?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
           location?: string | null
+          maps_url?: string | null
           phone?: string | null
           status?: string | null
           store_description?: string | null
           store_name?: string | null
+          store_number?: string | null
           store_slug?: string | null
+          theme_color?: string | null
           user_id?: string
         }
         Relationships: []
@@ -391,8 +415,3 @@ export type CompositeTypes<
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const

@@ -1,4 +1,7 @@
-project_id = "<your-new-project-id>"
+project_id = "pupjskrkmhzesjfltncb"
 
 [functions.digitize]
 verify_jwt = true
+
+[functions.whatsapp-agent]
+verify_jwt = false  # Meta sends unauthenticated POST requests — must be false

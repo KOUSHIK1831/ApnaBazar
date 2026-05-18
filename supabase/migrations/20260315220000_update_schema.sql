@@ -21,11 +21,13 @@ CREATE TABLE IF NOT EXISTS public.orders (
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
 -- Buyers can read their own orders
+DROP POLICY IF EXISTS "Buyers can view their own orders" ON public.orders;
 CREATE POLICY "Buyers can view their own orders"
     ON public.orders FOR SELECT
     USING (auth.uid() = buyer_id);
 
 -- Sellers can read orders placed on their products
+DROP POLICY IF EXISTS "Sellers can view orders for their products" ON public.orders;
 CREATE POLICY "Sellers can view orders for their products"
     ON public.orders FOR SELECT
     USING (auth.uid() IN (
@@ -33,11 +35,13 @@ CREATE POLICY "Sellers can view orders for their products"
     ));
 
 -- Buyers can insert their own orders
+DROP POLICY IF EXISTS "Buyers can create orders" ON public.orders;
 CREATE POLICY "Buyers can create orders"
     ON public.orders FOR INSERT
     WITH CHECK (auth.uid() = buyer_id);
 
 -- Sellers can update order status
+DROP POLICY IF EXISTS "Sellers can update order status" ON public.orders;
 CREATE POLICY "Sellers can update order status"
     ON public.orders FOR UPDATE
     USING (auth.uid() IN (
