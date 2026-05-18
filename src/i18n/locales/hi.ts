@@ -145,6 +145,9 @@ export const hi = {
   'orders.status.confirmed': 'कन्फ़र्म',
   'orders.status.completed': 'पूरा',
   'orders.status.cancelled': 'रद्द',
+  'orders.placedOn': 'दिया गया',
+  'orders.confirmedOn': 'पुष्टि',
+  'orders.completedOn': 'पूरा हुआ',
   'orders.newOrder': 'नया ऑर्डर!',
   'orders.newOrderDesc': 'एक खरीदार ने ऑर्डर दिया।',
 

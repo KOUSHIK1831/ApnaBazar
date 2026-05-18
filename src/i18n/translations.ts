@@ -12,7 +12,7 @@ export const languageLabels: Record<Language, string> = {
 
 export type TranslationKey = keyof typeof en;
 
-export type TranslationMap = Record<TranslationKey, Record<Language, string>>;
+type TranslationMap = Record<TranslationKey, Record<Language, string>>;
 
 const translations: TranslationMap = {} as TranslationMap;
 
@@ -29,5 +29,3 @@ for (const key of keys) {
 export const getTranslation = (key: TranslationKey, lang: Language): string => {
   return translations[key]?.[lang] || en[key] || key;
 };
-
-export default translations;

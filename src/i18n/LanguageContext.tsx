@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, use, useState, useCallback, ReactNode } from 'react';
 import { Language, TranslationKey, getTranslation } from './translations';
 import { trackEvent } from '@/lib/analytics';
 
@@ -46,7 +46,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 }
 
 export function useLanguage() {
-  const context = useContext(LanguageContext);
+  const context = use(LanguageContext);
   if (!context) {
     throw new Error('useLanguage must be used within a LanguageProvider');
   }

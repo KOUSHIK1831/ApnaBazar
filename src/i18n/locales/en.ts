@@ -145,6 +145,9 @@ export const en = {
   'orders.status.confirmed': 'Confirmed',
   'orders.status.completed': 'Completed',
   'orders.status.cancelled': 'Cancelled',
+  'orders.placedOn': 'Placed',
+  'orders.confirmedOn': 'Confirmed',
+  'orders.completedOn': 'Completed',
   'orders.newOrder': 'New Order!',
   'orders.newOrderDesc': 'A buyer placed an order.',
 

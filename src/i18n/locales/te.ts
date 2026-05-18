@@ -145,6 +145,9 @@ export const te = {
   'orders.status.confirmed': 'నిర్ధారించబడింది',
   'orders.status.completed': 'పూర్తయింది',
   'orders.status.cancelled': 'రద్దు చేయబడింది',
+  'orders.placedOn': 'ఉంచబడింది',
+  'orders.confirmedOn': 'నిర్ధారించబడింది',
+  'orders.completedOn': 'పూర్తయింది',
   'orders.newOrder': 'కొత్త ఆర్డర్!',
   'orders.newOrderDesc': 'ఒక కొనుగోలుదారు ఆర్డర్ చేశారు.',
 
