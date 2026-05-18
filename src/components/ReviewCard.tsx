@@ -12,6 +12,8 @@ interface AIProduct {
   price: number;
   category: string;
   tags: string[];
+  size?: string;
+  discount_percent?: number;
   confidence?: {
     title: number;
     description: number;
@@ -91,6 +93,32 @@ export default function ReviewCard({ product, imageUrl, index, onApprove, onReje
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Discount %</label>
+                  <Input
+                    type="number"
+                    value={edited.discount_percent ?? ''}
+                    onChange={(e) => setEdited(prev => ({ ...prev, discount_percent: parseFloat(e.target.value) || 0 }))}
+                    placeholder="e.g. 10"
+                    min="0" max="100"
+                  />
+                  {(edited.discount_percent ?? 0) > 0 && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Final: ₹{Math.round(edited.price * (1 - (edited.discount_percent ?? 0) / 100))}
+                      <span className="text-muted-foreground ml-1">(save ₹{Math.round(edited.price * (edited.discount_percent ?? 0) / 100)})</span>
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Size / Variant</label>
+                  <Input
+                    value={edited.size ?? ''}
+                    onChange={(e) => setEdited(prev => ({ ...prev, size: e.target.value }))}
+                    placeholder="e.g. S, M, L, XL or 500g"
+                  />
+                </div>
+              </div>
               <div>
                 <label htmlFor={`category-${product.id}`} className="text-xs font-medium text-muted-foreground">Category</label>
                 <Input
@@ -129,10 +157,25 @@ export default function ReviewCard({ product, imageUrl, index, onApprove, onReje
                 <h4 className={`font-semibold text-foreground leading-tight ${isLowConfidence('title') ? "bg-amber-100/50 rounded px-1 -mx-1" : ""}`}>
                   {product.title}
                 </h4>
-                <span className={`font-bold text-primary tabular-nums shrink-0 ${isLowConfidence('price') ? "bg-amber-100/50 rounded px-1 -mx-1" : ""}`}>
-                  ₹{product.price}
-                </span>
+                <div className="text-right shrink-0">
+                  {(product.discount_percent ?? 0) > 0 ? (
+                    <>
+                      <span className="font-bold text-primary tabular-nums">
+                        ₹{Math.round(product.price * (1 - (product.discount_percent ?? 0) / 100))}
+                      </span>
+                      <span className="text-xs text-muted-foreground line-through ml-1">₹{product.price}</span>
+                      <span className="text-xs text-green-600 ml-1">{product.discount_percent}% off</span>
+                    </>
+                  ) : (
+                    <span className={`font-bold text-primary tabular-nums ${isLowConfidence('price') ? "bg-amber-100/50 rounded px-1 -mx-1" : ""}`}>
+                      ₹{product.price}
+                    </span>
+                  )}
+                </div>
               </div>
+              {product.size && (
+                <p className="text-xs text-muted-foreground">Size: <span className="font-medium text-foreground">{product.size}</span></p>
+              )}
               <p className={`text-sm text-muted-foreground line-clamp-2 ${isLowConfidence('description') ? "bg-amber-50/50 rounded px-1 -mx-1 border border-amber-100/50" : ""}`}>
                 {product.description}
               </p>

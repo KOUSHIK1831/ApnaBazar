@@ -102,6 +102,7 @@ export type Database = {
           confirmed_at: string | null
           completed_at: string | null
           created_at: string
+          delivery_address: { name: string; phone: string; line1: string; city: string; state: string; pincode: string } | null
           id: string
           product_id: string | null
           quantity: number
@@ -115,6 +116,7 @@ export type Database = {
           confirmed_at?: string | null
           completed_at?: string | null
           created_at?: string
+          delivery_address?: { name: string; phone: string; line1: string; city: string; state: string; pincode: string } | null
           id?: string
           product_id?: string | null
           quantity?: number
@@ -128,6 +130,7 @@ export type Database = {
           confirmed_at?: string | null
           completed_at?: string | null
           created_at?: string
+          delivery_address?: { name: string; phone: string; line1: string; city: string; state: string; pincode: string } | null
           id?: string
           product_id?: string | null
           quantity?: number
@@ -161,6 +164,8 @@ export type Database = {
           low_stock_threshold: number | null
           price: number
           seller_id: string
+          size: string | null
+          discount_percent: number | null
           stock: number
           tags: string[] | null
           title: string
@@ -174,6 +179,8 @@ export type Database = {
           low_stock_threshold?: number | null
           price: number
           seller_id: string
+          size?: string | null
+          discount_percent?: number | null
           stock?: number
           tags?: string[] | null
           title: string
@@ -187,6 +194,8 @@ export type Database = {
           low_stock_threshold?: number | null
           price?: number
           seller_id?: string
+          size?: string | null
+          discount_percent?: number | null
           stock?: number
           tags?: string[] | null
           title?: string

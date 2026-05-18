@@ -14,6 +14,8 @@ interface AIProduct {
   price: number;
   category: string;
   tags: string[];
+  size?: string;
+  discount_percent?: number;
 }
 
 interface PendingReview {
@@ -92,6 +94,8 @@ export default function UploadZone({ sellerId, onComplete }: UploadZoneProps) {
       category: product.category,
       tags: product.tags || [],
       image_url: imageUrl,
+      size: product.size || null,
+      discount_percent: product.discount_percent || 0,
     });
     if (error) {
       toast({ title: 'Error', description: `Failed to save product: ${error.message}`, variant: 'destructive' });

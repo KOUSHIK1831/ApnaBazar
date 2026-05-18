@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Seller, Product } from '@/hooks/useSeller';
 import { useAuth } from '@/hooks/useAuth';
 import BuyerAuthModal from '@/components/BuyerAuthModal';
-import OrderConfirmation from '@/components/OrderConfirmation';
+import OrderConfirmation, { DeliveryAddress } from '@/components/OrderConfirmation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -121,6 +121,19 @@ function StorefrontContent() {
       toast({ title: 'Order failed', description: 'Please sign in to place an order.', variant: 'destructive' });
       return;
     }
+    setPendingProduct(product);
+    setShowOrderConfirm(true);
+  };
+
+  const handlePlaceOrderWithAddress = async (address: DeliveryAddress) => {
+    const product = pendingProduct;
+    if (!product) return;
+    const currentUser = user;
+    const uid = currentUser?.id;
+    if (!uid) {
+      toast({ title: 'Order failed', description: 'Please sign in to place an order.', variant: 'destructive' });
+      return;
+    }
     try {
       const { error } = await supabase.from('orders').insert({
         buyer_id: uid,
@@ -128,18 +141,16 @@ function StorefrontContent() {
         product_id: product.id,
         quantity: 1,
         status: 'pending',
-        buyer_name: currentUser?.name || currentUser?.email?.split('@')[0] || 'Buyer',
-        buyer_phone: buyerPhone || currentUser?.phone || '',
+        buyer_name: address.name || currentUser?.name || currentUser?.email?.split('@')[0] || 'Buyer',
+        buyer_phone: address.phone || currentUser?.phone || '',
+        delivery_address: address,
       });
-
       if (error) {
         console.error('Order error:', error);
         toast({ title: 'Order failed', description: 'Could not place order. Please try again.', variant: 'destructive' });
         return;
       }
-
       setOrderedProduct(product);
-      setShowOrderConfirm(true);
       trackEvent('order_placed', { productId: product.id, productTitle: product.title, price: product.price });
       toast({ title: t('storefront.orderPlaced'), description: t('storefront.orderSent') });
     } catch (err) {
@@ -151,16 +162,14 @@ function StorefrontContent() {
   const handleAuthSuccess = async (phone?: string) => {
     setShowAuth(false);
     if (pendingProduct) {
-      toast({ title: "Authenticated", description: "Completing your order..." });
       const product = pendingProduct;
-      setPendingProduct(null);
       const { data: { session } } = await supabase.auth.getSession();
-      const buyerId = session?.user?.id;
-      if (!buyerId) {
+      if (!session?.user?.id) {
         toast({ title: 'Order failed', description: 'Could not verify your session. Please try again.', variant: 'destructive' });
         return;
       }
-      await placeOrder(product, phone || '', buyerId);
+      // Show address modal now that user is authenticated
+      setShowOrderConfirm(true);
     }
   }; 
 
@@ -216,7 +225,26 @@ function StorefrontContent() {
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                   selectedCategory === cat
                     ? 'bg-primary text-white shadow-surface'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'}`} > {cat} ({products.filter((p) => p.category === cat).length}) </button> ))} </div> </div> )} {/* Products */} <main className="max-w-5xl mx-auto px-6 py-8"> {filteredProducts.length === 0 ? ( <div className="text-center py-20 animate-fade-in"> <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-4"> <ShoppingBag className="w-6 h-6 text-muted-foreground" /> </div> <p className="text-muted-foreground">{t('storefront.noProducts')}</p> </div> ) : ( <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in"> {filteredProducts.map((product) => ( <div key={product.id} className="group bg-card rounded-xl border border-border/50 overflow-hidden shadow-surface hover:shadow-surface-lg transition-all duration-300" > {product.image_url && ( <div className="aspect-[4/5] overflow-hidden bg-secondary"> <img src={product.image_url} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /> </div> )} <div className="p-5"> <div className="flex justify-between items-start mb-2"> <h3 className="font-semibold text-foreground leading-tight">{product.title}</h3> <span className="font-bold text-primary tabular-nums ml-2 shrink-0 text-lg">₹{product.price}</span> </div> {product.description && ( <p className="text-sm text-muted-foreground leading-relaxed mb-3 line-clamp-2">{product.description}</p> )} {product.tags && product.tags.length > 0 && ( <div className="flex flex-wrap gap-1.5 mb-4"> {product.tags.map((tag) => ( <Badge key={tag} variant="secondary" className="text-[10px] uppercase tracking-wider font-semibold"> {tag} </Badge> ))} </div> )} {product.stock !== undefined && ( <div className="mb-3"> <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${ product.stock === 0 ?'bg-red-100 text-red-700'
+                    : 'bg-muted text-muted-foreground hover:text-foreground'}`} > {cat} ({products.filter((p) => p.category === cat).length}) </button> ))} </div> </div> )} {/* Products */} <main className="max-w-5xl mx-auto px-6 py-8"> {filteredProducts.length === 0 ? ( <div className="text-center py-20 animate-fade-in"> <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-4"> <ShoppingBag className="w-6 h-6 text-muted-foreground" /> </div> <p className="text-muted-foreground">{t('storefront.noProducts')}</p> </div> ) : ( <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in"> {filteredProducts.map((product) => ( <div key={product.id} className="group bg-card rounded-xl border border-border/50 overflow-hidden shadow-surface hover:shadow-surface-lg transition-all duration-300" > {product.image_url && ( <div className="aspect-[4/5] overflow-hidden bg-secondary"> <img src={product.image_url} alt={product.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" /> </div> )} <div className="p-5"> <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-foreground leading-tight">{product.title}</h3>
+                    <div className="text-right shrink-0 ml-2">
+                      {(product.discount_percent ?? 0) > 0 ? (
+                        <>
+                          <div className="font-bold text-primary tabular-nums text-lg">₹{Math.round(product.price * (1 - (product.discount_percent ?? 0) / 100))}</div>
+                          <div className="flex items-center gap-1 justify-end">
+                            <span className="text-xs text-muted-foreground line-through">₹{product.price}</span>
+                            <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">{product.discount_percent}% off</span>
+                          </div>
+                        </>
+                      ) : (
+                        <span className="font-bold text-primary tabular-nums text-lg">₹{product.price}</span>
+                      )}
+                    </div>
+                  </div>
+                  {product.size && (
+                    <p className="text-xs text-muted-foreground mb-2">Size: <span className="font-medium text-foreground">{product.size}</span></p>
+                  )}
+                  {product.description && ( <p className="text-sm text-muted-foreground leading-relaxed mb-3 line-clamp-2">{product.description}</p> )} {product.tags && product.tags.length > 0 && ( <div className="flex flex-wrap gap-1.5 mb-4"> {product.tags.map((tag) => ( <Badge key={tag} variant="secondary" className="text-[10px] uppercase tracking-wider font-semibold"> {tag} </Badge> ))} </div> )} {product.stock !== undefined && ( <div className="mb-3"> <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${ product.stock === 0 ?'bg-red-100 text-red-700'
                           : product.stock <= (product.low_stock_threshold || 5)
                           ? 'bg-amber-100 text-amber-700'
                           : 'bg-green-100 text-green-700'
@@ -254,11 +282,13 @@ function StorefrontContent() {
 
       <OrderConfirmation
         isOpen={showOrderConfirm}
-        onClose={() => { setShowOrderConfirm(false); setOrderedProduct(null); }}
-        productTitle={orderedProduct?.title || ''}
-        productPrice={orderedProduct?.price || 0}
+        onClose={() => { setShowOrderConfirm(false); setOrderedProduct(null); setPendingProduct(null); }}
+        productTitle={pendingProduct?.title || orderedProduct?.title || ''}
+        productPrice={pendingProduct?.price || orderedProduct?.price || 0}
+        discountPercent={pendingProduct?.discount_percent || orderedProduct?.discount_percent || 0}
         sellerName={seller?.store_name || undefined}
         sellerContact={seller?.contact_number || seller?.phone || undefined}
+        onConfirm={handlePlaceOrderWithAddress}
       />
     </div>
   );

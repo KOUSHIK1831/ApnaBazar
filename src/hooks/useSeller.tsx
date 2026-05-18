@@ -30,6 +30,8 @@ interface Product {
   image_url: string | null;
   stock?: number;
   low_stock_threshold?: number;
+  size?: string | null;
+  discount_percent?: number | null;
   created_at: string;
 }
 
@@ -54,6 +56,7 @@ interface Order {
   created_at: string;
   confirmed_at?: string;
   completed_at?: string;
+  delivery_address?: { name: string; phone: string; line1: string; city: string; state: string; pincode: string } | null;
   product?: Product;
 }
 
