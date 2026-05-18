@@ -1,29 +1,6 @@
-import { readFileSync, existsSync, mkdirSync, writeFileSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
-import { createClient } from "@supabase/supabase-js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-function loadEnv() {
-  const envPath = resolve(__dirname, "../.env");
-  if (!existsSync(envPath)) return;
-  const content = readFileSync(envPath, "utf-8");
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIdx = trimmed.indexOf("=");
-    if (eqIdx === -1) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    let value = trimmed.slice(eqIdx + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    if (!process.env[key]) process.env[key] = value;
-  }
-}
-
-loadEnv();
+import { readFileSync, writeFileSync, existsSync } from "fs";
+import { join } from "path";
+import { supabase } from "../src/integrations/supabase/client";
 
 interface GroundTruthItem {
   id: string;
@@ -36,18 +13,11 @@ interface GroundTruthItem {
   };
 }
 
-interface AIResult {
-  title: string;
-  category: string;
-  price: number;
-  tags: string[];
-}
-
 interface EvalItem {
   id: string;
   image: string;
   expected: GroundTruthItem["expected"];
-  actual: AIResult | null;
+  actual: any;
   scores: {
     categoryMatch: boolean;
     titleSimilarity: number;
@@ -58,85 +28,55 @@ interface EvalItem {
 
 interface EvalResults {
   timestamp: string;
-  total: number;
-  metrics: {
-    categoryAccuracy: number;
-    avgTitleSimilarity: number;
-    priceInRangeRate: number;
-    avgTagJaccard: number;
+  summary: {
+    total: number;
+    processed: number;
+    success: number;
+    accuracy: {
+      category: number;
+      price: number;
+      titleSimilarity: number;
+      tagJaccard: number;
+    };
   };
   items: EvalItem[];
 }
 
-function jaccardSimilarity(a: string[], b: string[]): number {
-  const setA = new Set(a.map((t) => t.toLowerCase()));
-  const setB = new Set(b.map((t) => t.toLowerCase()));
-  const intersection = new Set([...setA].filter((x) => setB.has(x)));
-  const union = new Set([...setA, ...setB]);
-  if (union.size === 0) return 1;
+function stringSimilarity(s1: string, s2: string): number {
+  const n1 = s1.toLowerCase().trim();
+  const n2 = s2.toLowerCase().trim();
+  if (n1 === n2) return 1;
+  if (n1.includes(n2) || n2.includes(n1)) return 0.8;
+  return 0; // Simple for now
+}
+
+function jaccardSimilarity(a1: string[], a2: string[]): number {
+  const s1 = new Set(a1.map((s) => s.toLowerCase().trim()));
+  const s2 = new Set(a2.map((s) => s.toLowerCase().trim()));
+  const intersection = new Set([...s1].filter((x) => s2.has(x)));
+  const union = new Set([...s1, ...s2]);
   return intersection.size / union.size;
 }
 
-function stringSimilarity(a: string, b: string): number {
-  const aLower = a.toLowerCase().replace(/[^a-z0-9 ]/g, "");
-  const bLower = b.toLowerCase().replace(/[^a-z0-9 ]/g, "");
-  const aWords = new Set(aLower.split(/\s+/));
-  const bWords = new Set(bLower.split(/\s+/));
-  const intersection = new Set([...aWords].filter((w) => bWords.has(w)));
-  const union = new Set([...aWords, ...bWords]);
-  if (union.size === 0) return 1;
-  return intersection.size / union.size;
+async function callDigitize(imagePath: string) {
+  try {
+    const { data, error } = await supabase.functions.invoke("digitize", {
+      body: { imageUrl: `https://raw.githubusercontent.com/stackblitz/stackblitz-apnabazar/main/ai-eval/images/${imagePath}` },
+    });
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error(`Error digitizing ${imagePath}:`, err);
+    return null;
   }
-
-  async function callDigitize(imageUrl: string): Promise<AIResult | null> {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL;
-    const anonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    if (!supabaseUrl || !anonKey) {
-      console.warn("  [WARN] Supabase credentials not set in .env");
-      return null;
-    }
-
-    try {
-      const res = await fetch(
-        `${supabaseUrl}/functions/v1/digitize`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${anonKey}`,
-          },
-          body: JSON.stringify({ 
-            imageUrl, 
-            sellerId: "00000000-0000-4000-8000-000000000000" 
-          }),
-
-        }
-      );
-
-      if (!res.ok) {
-        console.warn(`  [ERROR] HTTP ${res.status}: ${await res.text()}`);
-        return null;
-      }
-
-      const data = await res.json();
-      const product = data.product;
-      return {
-        title: product.title || "",
-        category: product.category || "",
-        price: product.price || 0,
-        tags: product.tags || [],
-      };
-    } catch (err) {
-      console.warn(`  [ERROR] ${err}`);
-      return null;
-    }
-  }
-
+}
 
 async function main() {
-  const groundTruthPath = resolve(__dirname, "../ai-eval/ground-truth.json");
+  const groundTruthPath = join(process.cwd(), "ai-eval", "ground-truth.json");
+  const outputPath = join(process.cwd(), "ai-eval", "results.json");
+
   if (!existsSync(groundTruthPath)) {
-    console.error("ground-truth.json not found. Run from project root or check path.");
+    console.error("Ground truth file not found!");
     process.exit(1);
   }
 
@@ -148,6 +88,13 @@ async function main() {
   console.log(`━━━━━━━━━━━━━━━━━━━━━━\n`);
   console.log(`Loaded ${groundTruth.length} test cases\n`);
 
+  console.log(`Processing ${groundTruth.length} items concurrently...\n`);
+
+  const results = await Promise.all(groundTruth.map(async (item) => {
+    const actual = await callDigitize(item.image);
+    return { item, actual };
+  }));
+
   const items: EvalItem[] = [];
   let categoryCorrect = 0;
   let priceInRangeCount = 0;
@@ -155,9 +102,9 @@ async function main() {
   let tagJaccardSum = 0;
   let processedCount = 0;
 
-  for (const item of groundTruth) {
-    console.log(`[${item.id}] ${item.image}`);
-    const actual = await callDigitize(item.image);
+  for (const { item, actual } of results) {
+    processedCount++;
+    console.log(`[${item.id}] ${item.image} - ${actual ? 'Success' : 'Failed'}`);
 
     if (actual) {
       const categoryMatch =
@@ -185,7 +132,6 @@ async function main() {
       if (priceInRange) priceInRangeCount++;
       titleSimilaritySum += titleSim;
       tagJaccardSum += tagJaccard;
-      processedCount++;
 
       console.log(
         `  → Category: ${categoryMatch ? "✓" : "✗"} (got: ${actual.category}, expected: ${item.expected.category})`
@@ -210,38 +156,29 @@ async function main() {
     console.log("");
   }
 
-  const results: EvalResults = {
+  const finalResults: EvalResults = {
     timestamp: new Date().toISOString(),
-    total: groundTruth.length,
-    metrics: {
-      categoryAccuracy:
-        processedCount > 0 ? Math.round((categoryCorrect / processedCount) * 100) : 0,
-      avgTitleSimilarity:
-        processedCount > 0
-          ? Math.round((titleSimilaritySum / processedCount) * 100) / 100
-          : 0,
-      priceInRangeRate:
-        processedCount > 0
-          ? Math.round((priceInRangeCount / processedCount) * 100)
-          : 0,
-      avgTagJaccard:
-        processedCount > 0
-          ? Math.round((tagJaccardSum / processedCount) * 100) / 100
-          : 0,
+    summary: {
+      total: groundTruth.length,
+      processed: processedCount,
+      success: items.filter((i) => i.actual).length,
+      accuracy: {
+        category: Math.round((categoryCorrect / items.filter((i) => i.actual).length) * 100) || 0,
+        price: Math.round((priceInRangeCount / items.filter((i) => i.actual).length) * 100) || 0,
+        titleSimilarity: Math.round((titleSimilaritySum / items.filter((i) => i.actual).length) * 100) || 0,
+        tagJaccard: Math.round((tagJaccardSum / items.filter((i) => i.actual).length) * 100) || 0,
+      },
     },
     items,
   };
 
-  const outDir = resolve(__dirname, "../ai-eval");
-  if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
-  const outPath = resolve(outDir, "results.json");
-  writeFileSync(outPath, JSON.stringify(results, null, 2));
-  console.log(`Results saved to ai-eval/results.json\n`);
+  writeFileSync(outputPath, JSON.stringify(finalResults, null, 2));
+  console.log(`\nResults saved to ${outputPath}`);
   console.log(`Summary:`);
-  console.log(`  Category Accuracy:  ${results.metrics.categoryAccuracy}%`);
-  console.log(`  Avg Title Similarity: ${(results.metrics.avgTitleSimilarity * 100).toFixed(0)}%`);
-  console.log(`  Price In Range Rate: ${results.metrics.priceInRangeRate}%`);
-  console.log(`  Avg Tag Jaccard:    ${(results.metrics.avgTagJaccard * 100).toFixed(0)}%`);
+  console.log(`- Category Accuracy: ${finalResults.summary.accuracy.category}%`);
+  console.log(`- Price Accuracy: ${finalResults.summary.accuracy.price}%`);
+  console.log(`- Title Similarity: ${finalResults.summary.accuracy.titleSimilarity}%`);
+  console.log(`- Tag Accuracy: ${finalResults.summary.accuracy.tagJaccard}%`);
 }
 
 main().catch(console.error);

@@ -11,10 +11,10 @@ function loadEnv() {
   for (const line of content.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIdx = trimmed.indexOf("=");
-    if (eqIdx === -1) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    let value = trimmed.slice(eqIdx + 1).trim();
+    const match = trimmed.match(/^([^=]+)=(.*)$/);
+    if (!match) continue;
+    const key = match[1].trim();
+    let value = match[2].trim();
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
@@ -95,9 +95,7 @@ async function main() {
   console.log(`\n Performance Benchmark`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
-  const results: BenchmarkResult[] = [];
-
-  for (const test of testCases) {
+  const results: BenchmarkResult[] = await Promise.all(testCases.map(async (test: any) => {
     const localPath = resolve(__dirname, "..", "ai-eval/images", test.image.split("/").pop() || "");
     let result: BenchmarkResult;
     
@@ -118,11 +116,11 @@ async function main() {
     result.aiLatencyMs = aiLatency;
     result.fullPipelineMs = result.compressionTimeMs + aiLatency;
     
-    results.push(result);
     console.log(
       `  Comp: ${result.compressionTimeMs}ms | AI Latency: ${aiLatency}ms | Full: ${result.fullPipelineMs}ms`
     );
-  }
+    return result;
+  }));
 
   const validAIResults = results.filter(r => (r.aiLatencyMs || 0) > 0);
   const avgAILatency = validAIResults.reduce((s, r) => s + (r.aiLatencyMs || 0), 0) / (validAIResults.length || 1);
