@@ -1,36 +1,29 @@
-import { useState, useEffect, useReducer, useCallback } from 'react';
+import { useEffect, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Store, ShoppingBag, Shield, Loader2, Eye, EyeOff, Phone, Mail, LogIn, UserPlus, RefreshCw, MessageSquare } from 'lucide-react';
+import { Store, ShoppingBag, Shield, Loader2, Eye, EyeOff, Mail, LogIn, UserPlus } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import { NetworkStrengthIndicator } from '@/components/NetworkStrengthIndicator';
 
 type Mode = 'login' | 'signup';
-type LoginMethod = 'otp' | 'password';
-
 interface AuthState {
   mode: Mode;
-  loginMethod: LoginMethod;
   showPassword: {
     login: boolean;
     signup: boolean;
   };
   submitting: boolean;
-  resendTimer: number;
-  canResend: boolean;
-  showOtpInput: boolean;
   form: {
     phone: string;
     loginEmail: string;
     loginPassword: string;
-    otp: string;
     signupName: string;
     signupEmail: string;
     signupPassword: string;
@@ -40,28 +33,19 @@ interface AuthState {
 
 type AuthAction = 
   | { type: 'SET_MODE'; payload: Mode }
-  | { type: 'SET_LOGIN_METHOD'; payload: LoginMethod }
   | { type: 'TOGGLE_PASSWORD'; payload: 'login' | 'signup' }
   | { type: 'SET_SUBMITTING'; payload: boolean }
-  | { type: 'SET_RESEND_TIMER'; payload: number }
-  | { type: 'SET_CAN_RESEND'; payload: boolean }
-  | { type: 'SET_SHOW_OTP'; payload: boolean }
   | { type: 'UPDATE_FORM'; payload: Partial<AuthState['form']> }
   | { type: 'RESET_FORM' };
 
 const initialState: AuthState = {
   mode: 'login',
-  loginMethod: 'password',
   showPassword: { login: false, signup: false },
   submitting: false,
-  resendTimer: 0,
-  canResend: false,
-  showOtpInput: false,
   form: {
     phone: '',
     loginEmail: '',
     loginPassword: '',
-    otp: '',
     signupName: '',
     signupEmail: '',
     signupPassword: '',
@@ -72,17 +56,13 @@ const initialState: AuthState = {
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
     case 'SET_MODE': return { ...state, mode: action.payload };
-    case 'SET_LOGIN_METHOD': return { ...state, loginMethod: action.payload };
     case 'TOGGLE_PASSWORD': return { 
       ...state, 
       showPassword: { ...state.showPassword, [action.payload]: !state.showPassword[action.payload] } 
     };
     case 'SET_SUBMITTING': return { ...state, submitting: action.payload };
-    case 'SET_RESEND_TIMER': return { ...state, resendTimer: action.payload };
-    case 'SET_CAN_RESEND': return { ...state, canResend: action.payload };
-    case 'SET_SHOW_OTP': return { ...state, showOtpInput: action.payload };
     case 'UPDATE_FORM': return { ...state, form: { ...state.form, ...action.payload } };
-    case 'RESET_FORM': return { ...initialState, mode: state.mode, loginMethod: state.loginMethod };
+    case 'RESET_FORM': return { ...initialState, mode: state.mode };
     default: return state;
   }
 }
@@ -94,22 +74,7 @@ export default function Auth() {
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  const { mode, loginMethod, showPassword, submitting, resendTimer, canResend, showOtpInput, form } = state;
-
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (resendTimer > 0) {
-      interval = setInterval(() => {
-        if (resendTimer <= 1) {
-          dispatch({ type: 'SET_CAN_RESEND', payload: true });
-          dispatch({ type: 'SET_RESEND_TIMER', payload: 0 });
-        } else {
-          dispatch({ type: 'SET_RESEND_TIMER', payload: resendTimer - 1 });
-        }
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [resendTimer]);
+  const { mode, showPassword, submitting, form } = state;
 
   useEffect(() => {
     if (!loading && user) {
@@ -118,50 +83,6 @@ export default function Auth() {
       else if (user.role === 'buyer') navigate('/buyer');
     }
   }, [user, loading, navigate]);
-
-  const isValidPhone = useCallback(() => form.phone.length === 10 && parseInt(form.phone[0]) > 5, [form.phone]);
-
-  const handleSendOtp = async () => {
-    if (!isValidPhone()) {
-      toast({ title: 'Error', description: 'Please enter a valid 10-digit phone number', variant: 'destructive' });
-      return;
-    }
-    dispatch({ type: 'SET_SUBMITTING', payload: true });
-    try {
-      await signIn.sendOtp(form.phone);
-      dispatch({ type: 'SET_SHOW_OTP', payload: true });
-      dispatch({ type: 'SET_RESEND_TIMER', payload: 60 });
-      dispatch({ type: 'SET_CAN_RESEND', payload: false });
-      toast({ title: 'OTP Sent', description: 'Check your phone for the OTP' });
-    } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to send OTP', variant: 'destructive' });
-    }
-    dispatch({ type: 'SET_SUBMITTING', payload: false });
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!form.otp || form.otp.length !== 6) {
-      toast({ title: 'Error', description: 'Please enter a valid 6-digit OTP', variant: 'destructive' });
-      return;
-    }
-    dispatch({ type: 'SET_SUBMITTING', payload: true });
-    const { error } = await signIn.verifyOtp(form.phone, form.otp);
-    dispatch({ type: 'SET_SUBMITTING', payload: false });
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Success', description: 'Logged in successfully' });
-      // Navigate directly based on profile role
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
-        const role = profile?.role || session.user.user_metadata?.role || 'seller';
-        if (role === 'buyer') navigate('/buyer');
-        else if (role === 'admin') navigate('/admin');
-        else navigate('/dashboard');
-      }
-    }
-  };
 
   const handlePasswordLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -190,7 +111,7 @@ export default function Auth() {
 
   const handleCreateAccount = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!isValidPhone()) {
+    if (!isValidPhone(form.phone)) {
       toast({ title: 'Error', description: 'Please enter a valid 10-digit phone number', variant: 'destructive' });
       return;
     }
@@ -220,6 +141,7 @@ export default function Auth() {
   };
 
   const formatPhone = (value: string) => value.replace(/\D/g, '').slice(0, 10);
+  const isValidPhone = (phone: string) => phone.length === 10 && parseInt(phone[0]) > 5;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 relative">
@@ -237,7 +159,7 @@ export default function Auth() {
               <LoginForm key="login"
                 state={state} 
                 dispatch={dispatch} 
-                handlers={{ handleSendOtp, handleVerifyOtp, handlePasswordLogin, formatPhone, isValidPhone }} 
+                handlers={{ handlePasswordLogin, formatPhone }} 
                 t={t} 
               />
             ) : (
@@ -295,107 +217,37 @@ function AuthModeToggle({ mode, dispatch, t }: { mode: Mode, dispatch: React.Dis
 }
 
 function LoginForm({ state, dispatch, handlers, t }: { state: AuthState, dispatch: React.Dispatch<AuthAction>, handlers: any, t: any }) {
-  const { loginMethod, showOtpInput, showPassword, submitting, resendTimer, canResend, form } = state;
+  const { showPassword, submitting, form } = state;
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (loginMethod === 'password') handlers.handlePasswordLogin(); else if (showOtpInput) handlers.handleVerifyOtp(); else handlers.handleSendOtp(); }} className="space-y-4">
-      {loginMethod === 'otp' && !showOtpInput && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <Phone className="size-4" /> Enter your registered phone number
-          </p>
-          <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">+91</div>
-            <Input
-              type="tel"
-              autoComplete="tel"
-              placeholder="Enter 10-digit phone"
-              value={form.phone}
-              onChange={(e) => dispatch({ type: 'UPDATE_FORM', payload: { phone: handlers.formatPhone(e.target.value) } })}
-              className="pl-10"
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Prefer password?{' '}
-            <button type="button" onClick={() => dispatch({ type: 'SET_LOGIN_METHOD', payload: 'password' })} className="text-primary hover:underline font-medium">Login with password</button>
-          </p>
-          <Button type="submit" disabled={submitting || !handlers.isValidPhone()} className="w-full">
-            {submitting && <Loader2 className="size-4 mr-2 animate-spin" />} Send OTP
-          </Button>
-        </div>
-      )}
-
-      {loginMethod === 'otp' && showOtpInput && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <MessageSquare className="size-4" /> OTP sent to +91 {form.phone}
-          </p>
-          <Input
-            type="text"
-            autoComplete="one-time-code"
-            placeholder="Enter 6-digit OTP"
-            value={form.otp}
-            onChange={(e) => dispatch({ type: 'UPDATE_FORM', payload: { otp: e.target.value.replace(/\D/g, '').slice(0, 6) } })}
-            className="text-center text-2xl tracking-widest"
-            maxLength={6}
-          />
-          <Button type="submit" disabled={submitting || form.otp.length !== 6} className="w-full">
-            {submitting && <Loader2 className="size-4 mr-2 animate-spin" />} Verify OTP
-          </Button>
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => { dispatch({ type: 'SET_CAN_RESEND', payload: false }); dispatch({ type: 'UPDATE_FORM', payload: { otp: '' } }); handlers.handleSendOtp(); }}
-              disabled={!canResend || submitting}
-              className="flex items-center gap-1 text-sm text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
-            >
-              <RefreshCw className="size-3" /> {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}
-            </button>
-            <button type="button" onClick={() => dispatch({ type: 'SET_SHOW_OTP', payload: false })} className="text-sm text-muted-foreground hover:underline">Back</button>
-          </div>
-        </div>
-      )}
-
-      {loginMethod === 'password' && (
-        <div className="space-y-4">
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              type="email"
-              autoComplete="email"
-              placeholder="Enter your email"
-              value={form.loginEmail}
-              onChange={(e) => dispatch({ type: 'UPDATE_FORM', payload: { loginEmail: e.target.value } })}
-              className="pl-10"
-            />
-          </div>
-          <div className="relative">
-            <Input
-              type={showPassword.login ? 'text' : 'password'}
-              autoComplete="current-password"
-              placeholder="Enter your password"
-              value={form.loginPassword}
-              onChange={(e) => dispatch({ type: 'UPDATE_FORM', payload: { loginPassword: e.target.value } })}
-              className="pr-10"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handlers.handlePasswordLogin();
-                }
-              }}
-            />
-            <button type="button" onClick={() => dispatch({ type: 'TOGGLE_PASSWORD', payload: 'login' })} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              {showPassword.login ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Prefer OTP?{' '}
-            <button type="button" onClick={() => dispatch({ type: 'SET_LOGIN_METHOD', payload: 'otp' })} className="text-primary hover:underline font-medium">Login with OTP</button>
-          </p>
-          <Button type="submit" disabled={submitting || !form.loginEmail.trim() || !form.loginPassword} className="w-full">
-            {submitting && <Loader2 className="size-4 mr-2 animate-spin" />} {t('auth.signIn')}
-          </Button>
-        </div>
-      )}
+    <form onSubmit={(e) => { e.preventDefault(); handlers.handlePasswordLogin(); }} className="space-y-4">
+      <div className="relative">
+        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          type="email"
+          autoComplete="email"
+          placeholder="Enter your email"
+          value={form.loginEmail}
+          onChange={(e) => dispatch({ type: 'UPDATE_FORM', payload: { loginEmail: e.target.value } })}
+          className="pl-10"
+        />
+      </div>
+      <div className="relative">
+        <Input
+          type={showPassword.login ? 'text' : 'password'}
+          autoComplete="current-password"
+          placeholder="Enter your password"
+          value={form.loginPassword}
+          onChange={(e) => dispatch({ type: 'UPDATE_FORM', payload: { loginPassword: e.target.value } })}
+          className="pr-10"
+        />
+        <button type="button" onClick={() => dispatch({ type: 'TOGGLE_PASSWORD', payload: 'login' })} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          {showPassword.login ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
+      </div>
+      <Button type="submit" disabled={submitting || !form.loginEmail.trim() || !form.loginPassword} className="w-full">
+        {submitting && <Loader2 className="size-4 mr-2 animate-spin" />} {t('auth.signIn')}
+      </Button>
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
         {t('auth.noAccount')}{' '}
