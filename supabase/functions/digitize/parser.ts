@@ -65,7 +65,10 @@ export function parseAIResponse(content: string): ProductData {
     if (parsed.description) parsed.description = sanitizeText(parsed.description);
     if (parsed.category) parsed.category = sanitizeText(parsed.category);
     if (Array.isArray(parsed.tags)) {
-      parsed.tags = parsed.tags.map((t: string) => sanitizeText(t)).filter(Boolean);
+      parsed.tags = parsed.tags.flatMap((t: string) => {
+        const sanitized = sanitizeText(t);
+        return sanitized ? [sanitized] : [];
+      });
     }
 
     // Default confidence if missing
