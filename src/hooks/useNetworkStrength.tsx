@@ -1,10 +1,10 @@
 import SpeedTest from '@cloudflare/speedtest';
 import {
   createContext,
+  useContext,
   useEffect,
   useRef,
   useState,
-  use,
   type ReactNode,
 } from 'react';
 
@@ -201,7 +201,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
 }
 
 export function useNetworkStrength(): NetworkInfo {
-  return use(NetworkContext);
+  return useContext(NetworkContext);
 }
 
 const UPLOAD_RATIO = 0.2;
