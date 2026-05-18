@@ -67,6 +67,44 @@ describe("useSeller", () => {
     });
   });
 
+  it("updates order status with timestamps", async () => {
+    authState.user = { id: "user-1" };
+    const updateMock = vi.fn().mockReturnValue(createQuery({ error: null }));
+    fromMock.mockImplementation((table: string) => {
+      if (table === "sellers") {
+        return createQuery({
+          data: { id: "seller-1", user_id: "user-1" },
+        });
+      }
+      if (table === "orders") {
+        return {
+          select: vi.fn(() => createQuery({ data: [] })),
+          update: updateMock,
+          eq: vi.fn(() => createQuery({ error: null })),
+        };
+      }
+      return createQuery({ data: [] });
+    });
+
+    const { result } = renderHook(() => useSeller());
+    
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await result.current.updateOrderStatus("order-1", "confirmed");
+    
+    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({
+      status: "confirmed",
+      confirmed_at: expect.any(String),
+    }));
+
+    await result.current.updateOrderStatus("order-1", "completed");
+    
+    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({
+      status: "completed",
+      completed_at: expect.any(String),
+    }));
+  });
+
   it("blocks seller creation without an authenticated user", async () => {
     authState.user = null;
     fromMock.mockReset();

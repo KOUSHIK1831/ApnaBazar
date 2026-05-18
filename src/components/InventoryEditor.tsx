@@ -24,13 +24,10 @@ export default function InventoryEditor({ products, onUpdate }: InventoryEditorP
   );
 
   const getEdit = (product: Product) => {
-    if (!edits[product.id]) {
-      edits[product.id] = {
-        stock: String(product.stock ?? 0),
-        low_stock_threshold: String(product.low_stock_threshold ?? 5),
-      };
-    }
-    return edits[product.id];
+    return edits[product.id] || {
+      stock: String(product.stock ?? 0),
+      low_stock_threshold: String(product.low_stock_threshold ?? 5),
+    };
   };
 
   const setField = (id: string, field: 'stock' | 'low_stock_threshold', value: string) => {
@@ -63,25 +60,33 @@ export default function InventoryEditor({ products, onUpdate }: InventoryEditorP
   }, [edits, onUpdate, toast]);
 
   const handleSaveAll = useCallback(async () => {
-    for (const product of products) {
+    const productsToUpdate = products.flatMap((product) => {
       const edit = edits[product.id];
-      if (!edit) continue;
+      if (!edit) return [];
       const stock = parseInt(edit.stock, 10);
       const low_stock_threshold = parseInt(edit.low_stock_threshold, 10);
       if (!isNaN(stock) && !isNaN(low_stock_threshold) && stock >= 0 && low_stock_threshold >= 0) {
-        setSaving((prev) => ({ ...prev, [product.id]: true }));
-        await onUpdate(product.id, { stock, low_stock_threshold });
-        setSaving((prev) => ({ ...prev, [product.id]: false }));
+        return [{ id: product.id, stock, low_stock_threshold }];
       }
-    }
+      return [];
+    });
+
+    if (productsToUpdate.length === 0) return;
+
+    await Promise.all(productsToUpdate.map(async (p) => {
+      setSaving((prev) => ({ ...prev, [p.id]: true }));
+      await onUpdate(p.id, { stock: p.stock, low_stock_threshold: p.low_stock_threshold });
+      setSaving((prev) => ({ ...prev, [p.id]: false }));
+    }));
+
     toast({ title: 'All changes saved' });
   }, [products, edits, onUpdate, toast]);
 
   if (products.length === 0) {
     return (
       <div className="border border-dashed border-border/50 rounded-xl p-16 text-center">
-        <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-          <Package className="w-6 h-6 text-muted-foreground" />
+        <div className="size-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+          <Package className="size-6 text-muted-foreground" />
         </div>
         <h3 className="font-medium text-foreground mb-2">No products yet</h3>
         <p className="text-sm text-muted-foreground">Upload products first to manage inventory.</p>
@@ -95,7 +100,7 @@ export default function InventoryEditor({ products, onUpdate }: InventoryEditorP
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -105,7 +110,7 @@ export default function InventoryEditor({ products, onUpdate }: InventoryEditorP
         </div>
         {hasEdits && (
           <Button onClick={handleSaveAll} size="sm">
-            <Save className="w-4 h-4 mr-1.5" /> Save All Changes
+            <Save className="size-4 mr-1.5" /> Save All Changes
           </Button>
         )}
       </div>
@@ -134,7 +139,7 @@ export default function InventoryEditor({ products, onUpdate }: InventoryEditorP
                           <img
                             src={product.image_url}
                             alt={product.title}
-                            className="w-10 h-10 rounded-lg object-cover bg-secondary"
+                            className="size-10 rounded-lg object-cover bg-secondary"
                           />
                         )}
                         <span className="text-sm font-medium text-foreground truncate max-w-[200px]">
@@ -179,9 +184,9 @@ export default function InventoryEditor({ products, onUpdate }: InventoryEditorP
                         disabled={saving[product.id]}
                       >
                         {saving[product.id] ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <Loader2 className="size-3.5 animate-spin" />
                         ) : (
-                          <Save className="w-3.5 h-3.5" />
+                          <Save className="size-3.5" />
                         )}
                       </Button>
                     </td>

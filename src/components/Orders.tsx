@@ -4,6 +4,7 @@ import { useLanguage } from '@/i18n/LanguageContext';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 import { 
   ShoppingBag, 
   User, 
@@ -24,12 +25,18 @@ interface OrdersProps {
 
 export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const handleStatusUpdate = async (orderId: string, status: Order['status']) => {
     setUpdatingId(orderId);
     try {
-      await onUpdateStatus(orderId, status);
+      const { error } = await onUpdateStatus(orderId, status);
+      if (error) {
+        toast({ title: 'Update failed', description: error?.message || 'Could not update order status.', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'Update failed', description: err instanceof Error ? err.message : 'Something went wrong.', variant: 'destructive' });
     } finally {
       setUpdatingId(null);
     }
@@ -47,10 +54,10 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
 
   const getStatusIcon = (status: Order['status']) => {
     switch (status) {
-      case 'pending': return <Clock className="w-3.5 h-3.5 mr-1" />;
-      case 'confirmed': return <CheckCircle2 className="w-3.5 h-3.5 mr-1" />;
-      case 'completed': return <CheckCircle2 className="w-3.5 h-3.5 mr-1" />;
-      case 'cancelled': return <XCircle className="w-3.5 h-3.5 mr-1" />;
+      case 'pending': return <Clock className="size-3.5 mr-1" />;
+      case 'confirmed': return <CheckCircle2 className="size-3.5 mr-1" />;
+      case 'completed': return <CheckCircle2 className="size-3.5 mr-1" />;
+      case 'cancelled': return <XCircle className="size-3.5 mr-1" />;
     }
   };
 
@@ -63,10 +70,10 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
   if (orders.length === 0) {
     return (
       <div className="text-center py-20 border border-dashed border-border/50 rounded-2xl bg-card/30 backdrop-blur-sm animate-fade-in">
-        <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-          <ShoppingBag className="w-8 h-8 text-muted-foreground" />
+        <div className="size-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+          <ShoppingBag className="size-8 text-muted-foreground" />
         </div>
-        <h3 className="text-xl font-bold text-foreground mb-2">{t('orders.noOrders')}</h3>
+        <h3 className="text-xl font-semibold text-foreground mb-2">{t('orders.noOrders')}</h3>
         <p className="text-sm text-muted-foreground max-w-xs mx-auto">
           Share your store link with customers to start receiving orders!
         </p>
@@ -77,8 +84,8 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-          <ShoppingBag className="w-6 h-6 text-primary" />
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
+          <ShoppingBag className="size-6 text-primary" />
           {t('orders.title')}
           <Badge variant="secondary" className="ml-2 font-mono">{orders.length}</Badge>
         </h2>
@@ -99,20 +106,19 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                       <img 
                         src={order.product.image_url} 
                         alt={order.product.title} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="size-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
                   ) : (
                     <div className="w-20 h-24 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                      <ShoppingBag className="w-8 h-8 text-muted-foreground/30" />
+                      <ShoppingBag className="size-8 text-muted-foreground/30" />
                     </div>
                   )}
                   <div className="flex flex-col justify-center">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                      <Calendar className="w-3 h-3" />
-                      {format(new Date(order.created_at), 'MMM dd, yyyy • HH:mm')}
-                    </div>
-                    <h3 className="font-bold text-lg text-foreground mb-1 group-hover:text-primary transition-colors">
+                    <OrderDate date={order.created_at} label={t('orders.placedOn')} />
+                    {order.confirmed_at && <OrderDate date={order.confirmed_at} label={t('orders.confirmedOn')} />}
+                    {order.completed_at && <OrderDate date={order.completed_at} label={t('orders.completedOn')} />}
+                    <h3 className="font-semibold text-lg text-foreground mb-1 group-hover:text-primary transition-colors">
                       {order.product?.title || t('orders.product')}
                     </h3>
                     <p className="text-primary font-mono font-bold">₹{order.product?.price || 0}</p>
@@ -122,8 +128,8 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                 {/* Customer Info */}
                 <div className="p-5 flex-1 flex flex-col justify-center border-b md:border-b-0 md:border-r border-border/50">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary" />
+                    <div className="size-8 rounded-full bg-primary/5 flex items-center justify-center">
+                      <User className="size-4 text-primary" />
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{t('orders.customer')}</p>
@@ -149,7 +155,7 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                         className="flex-1 bg-green-500/5 hover:bg-green-500/10 border-green-500/20 text-green-600 h-10"
                         onClick={() => window.open(getWhatsAppLink(order.buyer_phone!, order), '_blank')}
                       >
-                        <MessageCircle className="w-4 h-4 mr-2" />
+                        <MessageCircle className="size-4 mr-2" />
                         WhatsApp
                       </Button>
                     )}
@@ -159,7 +165,7 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                       className="flex-1 h-10 border-border/50"
                       onClick={() => order.buyer_phone && window.open(`tel:${order.buyer_phone}`, '_self')}
                     >
-                      <Phone className="w-4 h-4" />
+                      <Phone className="size-4" />
                     </Button>
                   </div>
 
@@ -171,7 +177,7 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                         onClick={() => handleStatusUpdate(order.id, 'confirmed')}
                         disabled={updatingId === order.id}
                       >
-                        {updatingId === order.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        {updatingId === order.id ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
                         Confirm Order
                       </Button>
                     )}
@@ -183,7 +189,7 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                         onClick={() => handleStatusUpdate(order.id, 'completed')}
                         disabled={updatingId === order.id}
                       >
-                        {updatingId === order.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        {updatingId === order.id ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
                         Ship Order
                       </Button>
                     )}
@@ -195,7 +201,7 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
                         onClick={() => handleStatusUpdate(order.id, 'cancelled')}
                         disabled={updatingId === order.id}
                       >
-                        {updatingId === order.id && <Loader2 className="w-3 h-3 animate-spin mr-2" />}
+                        {updatingId === order.id && <Loader2 className="size-3 animate-spin mr-2" />}
                         Cancel Order
                       </Button>
                     )}
@@ -206,6 +212,15 @@ export default function Orders({ orders, onUpdateStatus }: OrdersProps) {
           </Card>
         ))}
       </div>
+    </div>
+  );
+}
+
+function OrderDate({ date, label }: { date: string; label?: string }) {
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+      <Calendar className="size-3" />
+      {label && <span className="font-medium">{label}:</span>} {format(new Date(date), 'MMM dd, yyyy • HH:mm')}
     </div>
   );
 }

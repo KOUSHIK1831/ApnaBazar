@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useReducer } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-export interface Seller {
+interface Seller {
   id: string;
   user_id: string;
   full_name: string | null;
@@ -19,7 +19,7 @@ export interface Seller {
   created_at: string;
 }
 
-export interface Product {
+interface Product {
   id: string;
   seller_id: string;
   title: string;
@@ -33,7 +33,7 @@ export interface Product {
   created_at: string;
 }
 
-export interface FileRecord {
+interface FileRecord {
   id: string;
   seller_id: string;
   file_url: string;
@@ -42,7 +42,7 @@ export interface FileRecord {
   created_at: string;
 }
 
-export interface Order {
+interface Order {
   id: string;
   buyer_id: string;
   seller_id: string;
@@ -52,69 +52,105 @@ export interface Order {
   buyer_name: string | null;
   buyer_phone: string | null;
   created_at: string;
+  confirmed_at?: string;
+  completed_at?: string;
   product?: Product;
+}
+
+type SellerState = {
+  seller: Seller | null;
+  products: Product[];
+  files: FileRecord[];
+  orders: Order[];
+  loading: boolean;
+};
+
+type SellerAction = 
+  | { type: 'SET_DATA', payload: Partial<SellerState> }
+  | { type: 'SET_LOADING', payload: boolean };
+
+function sellerReducer(state: SellerState, action: SellerAction): SellerState {
+  switch (action.type) {
+    case 'SET_DATA': return { ...state, ...action.payload };
+    case 'SET_LOADING': return { ...state, loading: action.payload };
+    default: return state;
+  }
 }
 
 export function useSeller() {
   const { user } = useAuth();
-  const [seller, setSeller] = useState<Seller | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [files, setFiles] = useState<FileRecord[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [state, dispatch] = useReducer(sellerReducer, {
+    seller: null,
+    products: [],
+    files: [],
+    orders: [],
+    loading: true,
+  });
 
   const fetchSeller = useCallback(async () => {
-    if (!user) return;
+    if (!user) return null;
     const { data } = await supabase
       .from('sellers')
       .select('*')
       .eq('user_id', user.id)
       .single();
-    setSeller(data);
+    if (data) dispatch({ type: 'SET_DATA', payload: { seller: data } });
+    return data;
   }, [user]);
 
-  const fetchProducts = useCallback(async () => {
-    if (!seller) return;
+  const fetchProducts = useCallback(async (currentSeller?: Seller) => {
+    const s = currentSeller || state.seller;
+    if (!s) return;
     const { data } = await supabase
       .from('products')
       .select('*')
-      .eq('seller_id', seller.id)
+      .eq('seller_id', s.id)
       .order('created_at', { ascending: false });
-    setProducts(data || []);
-  }, [seller]);
+    dispatch({ type: 'SET_DATA', payload: { products: data || [] } });
+  }, [state.seller]);
 
-  const fetchFiles = useCallback(async () => {
-    if (!seller) return;
+  const fetchFiles = useCallback(async (currentSeller?: Seller) => {
+    const s = currentSeller || state.seller;
+    if (!s) return;
     const { data } = await supabase
       .from('files')
       .select('*')
-      .eq('seller_id', seller.id)
+      .eq('seller_id', s.id)
       .order('created_at', { ascending: false });
-    setFiles(data || []);
-  }, [seller]);
+    dispatch({ type: 'SET_DATA', payload: { files: data || [] } });
+  }, [state.seller]);
 
-  const fetchOrders = useCallback(async () => {
-    if (!seller) return;
+  const fetchOrders = useCallback(async (currentSeller?: Seller) => {
+    const s = currentSeller || state.seller;
+    if (!s) return;
     const { data } = await supabase
       .from('orders')
       .select('*, product:products(*)')
-      .eq('seller_id', seller.id)
+      .eq('seller_id', s.id)
       .order('created_at', { ascending: false });
-    setOrders(data || []);
-  }, [seller]);
+    dispatch({ type: 'SET_DATA', payload: { orders: data || [] } });
+  }, [state.seller]);
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+    const updates: Record<string, string> = { status };
+    if (status === 'confirmed') updates.confirmed_at = new Date().toISOString();
+    if (status === 'completed') updates.completed_at = new Date().toISOString();
+
     const { error } = await supabase
       .from('orders')
-      .update({ status })
+      .update(updates)
       .eq('id', orderId);
-    if (!error) await fetchOrders();
+    if (error) {
+      console.error('updateOrderStatus error:', error);
+    } else {
+      await fetchOrders();
+    }
     return { error };
   };
 
   const createSeller = async (data: Partial<Seller>) => {
     if (!user) return { error: new Error('Not authenticated') };
-    
+
     const payload = {
       user_id: user.id,
       full_name: data.full_name,
@@ -131,7 +167,6 @@ export function useSeller() {
     };
 
     try {
-      // The trigger handle_new_user auto-creates a row on signup, so we should update first.
       const { data: updated, error: updateError } = await supabase
         .from('sellers')
         .update(payload)
@@ -139,20 +174,25 @@ export function useSeller() {
         .select();
 
       if (updateError) return { error: updateError };
-      
+
       if (updated && updated.length > 0) {
-        await fetchSeller();
+        const s = await fetchSeller();
+        if (s) {
+          await Promise.all([fetchProducts(s), fetchFiles(s), fetchOrders(s)]);
+        }
         return { error: null };
       }
 
-      // If no row was updated, try inserting (just in case the trigger didn't run)
       const { error: insertError } = await supabase
         .from('sellers')
         .insert(payload);
 
       if (insertError) return { error: insertError };
-      
-      await fetchSeller();
+
+      const s = await fetchSeller();
+      if (s) {
+        await Promise.all([fetchProducts(s), fetchFiles(s), fetchOrders(s)]);
+      }
       return { error: null };
     } catch (err) {
       console.error('createSeller unexpected error', err);
@@ -161,12 +201,12 @@ export function useSeller() {
   };
 
   const updateSellerProfile = async (updates: Partial<Seller>) => {
-    if (!seller) return { error: new Error('No seller profile found') };
-    
+    if (!state.seller) return { error: new Error('No seller profile found') };
+
     const { error } = await supabase
       .from('sellers')
       .update(updates)
-      .eq('id', seller.id);
+      .eq('id', state.seller.id);
 
     if (!error) await fetchSeller();
     return { error };
@@ -192,26 +232,32 @@ export function useSeller() {
 
   useEffect(() => {
     if (user) {
-      fetchSeller().finally(() => setLoading(false));
+      dispatch({ type: 'SET_LOADING', payload: true });
+      fetchSeller().then(async (s) => {
+        if (s) {
+          // Fetch everything else concurrently
+          const [productsData, filesData, ordersData] = await Promise.all([
+            supabase.from('products').select('*').eq('seller_id', s.id).order('created_at', { ascending: false }),
+            supabase.from('files').select('*').eq('seller_id', s.id).order('created_at', { ascending: false }),
+            supabase.from('orders').select('*, product:products(*)').eq('seller_id', s.id).order('created_at', { ascending: false })
+          ]);
+          dispatch({ 
+            type: 'SET_DATA', 
+            payload: { 
+              products: productsData.data || [], 
+              files: filesData.data || [], 
+              orders: ordersData.data || [] 
+            } 
+          });
+        }
+      }).finally(() => dispatch({ type: 'SET_LOADING', payload: false }));
     } else {
-      setLoading(false);
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [user, fetchSeller]);
 
-  useEffect(() => {
-    if (seller) {
-      fetchProducts();
-      fetchFiles();
-      fetchOrders();
-    }
-  }, [seller, fetchProducts, fetchFiles, fetchOrders]);
-
   return {
-    seller,
-    products,
-    files,
-    orders,
-    loading,
+    ...state,
     fetchSeller,
     fetchProducts,
     fetchFiles,
