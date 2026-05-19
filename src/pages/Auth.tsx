@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Store, ShoppingBag, Shield, Loader2, Eye, EyeOff, Mail, LogIn, UserPlus } from 'lucide-react';
+import { Store, ShoppingBag, Shield, Loader2, Eye, EyeOff, Mail, LogIn, UserPlus, KeyRound, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '@/i18n/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import { NetworkStrengthIndicator } from '@/components/NetworkStrengthIndicator';
 
-type Mode = 'login' | 'signup';
+type Mode = 'login' | 'signup' | 'forgot';
 interface AuthState {
   mode: Mode;
   showPassword: {
@@ -20,6 +20,8 @@ interface AuthState {
     signup: boolean;
   };
   submitting: boolean;
+  forgotEmail: string;
+  forgotSent: boolean;
   form: {
     phone: string;
     loginEmail: string;
@@ -35,6 +37,8 @@ type AuthAction =
   | { type: 'SET_MODE'; payload: Mode }
   | { type: 'TOGGLE_PASSWORD'; payload: 'login' | 'signup' }
   | { type: 'SET_SUBMITTING'; payload: boolean }
+  | { type: 'SET_FORGOT_EMAIL'; payload: string }
+  | { type: 'SET_FORGOT_SENT'; payload: boolean }
   | { type: 'UPDATE_FORM'; payload: Partial<AuthState['form']> }
   | { type: 'RESET_FORM' };
 
@@ -42,6 +46,8 @@ const initialState: AuthState = {
   mode: 'login',
   showPassword: { login: false, signup: false },
   submitting: false,
+  forgotEmail: '',
+  forgotSent: false,
   form: {
     phone: '',
     loginEmail: '',
@@ -61,6 +67,8 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       showPassword: { ...state.showPassword, [action.payload]: !state.showPassword[action.payload] } 
     };
     case 'SET_SUBMITTING': return { ...state, submitting: action.payload };
+    case 'SET_FORGOT_EMAIL': return { ...state, forgotEmail: action.payload };
+    case 'SET_FORGOT_SENT': return { ...state, forgotSent: action.payload };
     case 'UPDATE_FORM': return { ...state, form: { ...state.form, ...action.payload } };
     case 'RESET_FORM': return { ...initialState, mode: state.mode };
     default: return state;
@@ -69,12 +77,12 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 
 export default function Auth() {
   const [state, dispatch] = useReducer(authReducer, initialState);
-  const { signIn, signUp, user, loading } = useAuth();
+  const { signIn, signUp, user, loading, resetPassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  const { mode, showPassword, submitting, form } = state;
+  const { mode, showPassword, submitting, forgotEmail, forgotSent, form } = state;
 
   useEffect(() => {
     if (!loading && user) {
@@ -140,6 +148,22 @@ export default function Auth() {
     dispatch({ type: 'SET_SUBMITTING', payload: false });
   };
 
+  const handleForgotPassword = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!forgotEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail)) {
+      toast({ title: 'Error', description: 'Please enter a valid email address', variant: 'destructive' });
+      return;
+    }
+    dispatch({ type: 'SET_SUBMITTING', payload: true });
+    const { error } = await resetPassword(forgotEmail);
+    dispatch({ type: 'SET_SUBMITTING', payload: false });
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      dispatch({ type: 'SET_FORGOT_SENT', payload: true });
+    }
+  };
+
   const formatPhone = (value: string) => value.replace(/\D/g, '').slice(0, 10);
   const isValidPhone = (phone: string) => phone.length === 10 && parseInt(phone[0]) > 5;
 
@@ -157,17 +181,26 @@ export default function Auth() {
           <CardContent>
             {mode === 'login' ? (
               <LoginForm key="login"
-                state={state} 
-                dispatch={dispatch} 
-                handlers={{ handlePasswordLogin, formatPhone }} 
-                t={t} 
+                state={state}
+                dispatch={dispatch}
+                handlers={{ handlePasswordLogin, formatPhone }}
+                t={t}
+              />
+            ) : mode === 'signup' ? (
+              <SignupForm key="signup"
+                state={state}
+                dispatch={dispatch}
+                handlers={{ handleCreateAccount, formatPhone }}
+                t={t}
               />
             ) : (
-              <SignupForm key="signup"
-                state={state} 
-                dispatch={dispatch} 
-                handlers={{ handleCreateAccount, formatPhone }} 
-                t={t} 
+              <ForgotForm
+                email={forgotEmail}
+                sent={forgotSent}
+                submitting={submitting}
+                onEmailChange={(v) => dispatch({ type: 'SET_FORGOT_EMAIL', payload: v })}
+                onSubmit={handleForgotPassword}
+                onBack={() => { dispatch({ type: 'SET_MODE', payload: 'login' }); dispatch({ type: 'SET_FORGOT_SENT', payload: false }); }}
               />
             )}
           </CardContent>
@@ -190,6 +223,7 @@ function AuthHeader({ t }: { t: any }) {
 }
 
 function AuthModeToggle({ mode, dispatch, t }: { mode: Mode, dispatch: React.Dispatch<AuthAction>, t: any }) {
+  if (mode === 'forgot') return null;
   return (
     <CardHeader className="pb-4">
       <div className="flex gap-2 mb-3">
@@ -249,10 +283,19 @@ function LoginForm({ state, dispatch, handlers, t }: { state: AuthState, dispatc
         {submitting && <Loader2 className="size-4 mr-2 animate-spin" />} {t('auth.signIn')}
       </Button>
 
-      <p className="mt-4 text-center text-sm text-muted-foreground">
-        {t('auth.noAccount')}{' '}
-        <button type="button" onClick={() => { dispatch({ type: 'SET_MODE', payload: 'signup' }); dispatch({ type: 'RESET_FORM' }); }} className="text-primary hover:underline font-medium">{t('auth.signUp')}</button>
-      </p>
+      <div className="flex items-center justify-between mt-1">
+        <p className="text-sm text-muted-foreground">
+          {t('auth.noAccount')}{' '}
+          <button type="button" onClick={() => { dispatch({ type: 'SET_MODE', payload: 'signup' }); dispatch({ type: 'RESET_FORM' }); }} className="text-primary hover:underline font-medium">{t('auth.signUp')}</button>
+        </p>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'SET_MODE', payload: 'forgot' })}
+          className="text-sm text-muted-foreground hover:text-primary transition-colors"
+        >
+          Forgot password?
+        </button>
+      </div>
     </form>
   );
 }
@@ -329,6 +372,66 @@ function SignupForm({ state, dispatch, handlers, t }: { state: AuthState, dispat
         {t('auth.hasAccount')}{' '}
         <button type="button" onClick={() => { dispatch({ type: 'SET_MODE', payload: 'login' }); dispatch({ type: 'RESET_FORM' }); }} className="text-primary hover:underline font-medium">{t('auth.signIn')}</button>
       </p>
+    </form>
+  );
+}
+
+function ForgotForm({ email, sent, submitting, onEmailChange, onSubmit, onBack }: {
+  email: string; sent: boolean; submitting: boolean;
+  onEmailChange: (v: string) => void;
+  onSubmit: (e?: React.FormEvent) => void;
+  onBack: () => void;
+}) {
+  if (sent) {
+    return (
+      <div className="py-4 text-center space-y-4">
+        <div className="mx-auto size-14 bg-green-50 dark:bg-green-500/10 rounded-full flex items-center justify-center">
+          <CheckCircle2 className="size-7 text-green-600" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-foreground">Check your email</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            We sent a password reset link to <span className="font-medium text-foreground">{email}</span>
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">Didn't receive it? Check your spam folder or try again.</p>
+        <button type="button" onClick={onBack} className="text-sm text-primary hover:underline font-medium flex items-center gap-1 mx-auto">
+          <ArrowLeft className="size-3.5" /> Back to Sign In
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4 py-2">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="size-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+          <KeyRound className="size-4 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-foreground">Reset your password</p>
+          <p className="text-xs text-muted-foreground">We'll send a reset link to your email</p>
+        </div>
+      </div>
+      <div className="relative">
+        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          type="email"
+          autoComplete="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
+          className="pl-10"
+          autoFocus
+        />
+      </div>
+      <Button type="submit" disabled={submitting || !email.trim()} className="w-full">
+        {submitting && <Loader2 className="size-4 mr-2 animate-spin" />}
+        Send Reset Link
+      </Button>
+      <button type="button" onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mx-auto transition-colors">
+        <ArrowLeft className="size-3.5" /> Back to Sign In
+      </button>
     </form>
   );
 }

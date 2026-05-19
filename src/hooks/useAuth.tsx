@@ -28,6 +28,8 @@ interface AuthContextType {
     password: (identifier: string, password: string) => Promise<{ error: Error | null }>;
   };
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -334,6 +336,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) return { error: new Error(error.message) };
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error('Network error') };
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) return { error: new Error(error.message) };
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error('Network error') };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -342,6 +366,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUp,
         signIn: { sendOtp, verifyOtp, password: passwordLogin },
         signOut,
+        resetPassword,
+        updatePassword,
       }}
     >
       {children}

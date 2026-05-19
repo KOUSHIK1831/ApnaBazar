@@ -1,0 +1,252 @@
+import { useEffect, useReducer } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { Store, Loader2, Eye, EyeOff, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+type PageState = 'loading' | 'form' | 'success' | 'invalid';
+
+interface State {
+  page: PageState;
+  password: string;
+  confirm: string;
+  showPassword: boolean;
+  showConfirm: boolean;
+  submitting: boolean;
+  error: string;
+}
+
+type Action =
+  | { type: 'SET_PAGE'; payload: PageState }
+  | { type: 'SET_FIELD'; payload: Partial<Pick<State, 'password' | 'confirm' | 'error'>> }
+  | { type: 'TOGGLE'; payload: 'showPassword' | 'showConfirm' }
+  | { type: 'SET_SUBMITTING'; payload: boolean };
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'SET_PAGE': return { ...state, page: action.payload };
+    case 'SET_FIELD': return { ...state, ...action.payload };
+    case 'TOGGLE': return { ...state, [action.payload]: !state[action.payload] };
+    case 'SET_SUBMITTING': return { ...state, submitting: action.payload };
+    default: return state;
+  }
+}
+
+export default function ResetPassword() {
+  const [state, dispatch] = useReducer(reducer, {
+    page: 'loading',
+    password: '',
+    confirm: '',
+    showPassword: false,
+    showConfirm: false,
+    submitting: false,
+    error: '',
+  });
+
+  const { updatePassword } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Supabase puts the recovery token in the URL hash — onAuthStateChange fires with RECOVERY event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        dispatch({ type: 'SET_PAGE', payload: 'form' });
+      }
+    });
+
+    // Also check if there's already a session (user clicked link, session restored)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        dispatch({ type: 'SET_PAGE', payload: 'form' });
+      } else {
+        // Give onAuthStateChange a moment to fire
+        setTimeout(() => {
+          dispatch((prev: any) => prev.page === 'loading' ? { ...prev, page: 'invalid' } : prev);
+        }, 2000);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Fallback: mark invalid after 3s if still loading
+  useEffect(() => {
+    if (state.page !== 'loading') return;
+    const t = setTimeout(() => dispatch({ type: 'SET_PAGE', payload: 'invalid' }), 3000);
+    return () => clearTimeout(t);
+  }, [state.page]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (state.password.length < 6) {
+      dispatch({ type: 'SET_FIELD', payload: { error: 'Password must be at least 6 characters' } });
+      return;
+    }
+    if (state.password !== state.confirm) {
+      dispatch({ type: 'SET_FIELD', payload: { error: 'Passwords do not match' } });
+      return;
+    }
+    dispatch({ type: 'SET_SUBMITTING', payload: true });
+    const { error } = await updatePassword(state.password);
+    dispatch({ type: 'SET_SUBMITTING', payload: false });
+    if (error) {
+      dispatch({ type: 'SET_FIELD', payload: { error: error.message } });
+    } else {
+      dispatch({ type: 'SET_PAGE', payload: 'success' });
+      toast({ title: 'Password updated!', description: 'You can now sign in with your new password.' });
+      setTimeout(() => navigate('/auth'), 2500);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="mb-8 text-center">
+          <div className="mx-auto size-12 bg-gradient-brand rounded-xl flex items-center justify-center mb-4">
+            <Store className="size-6 text-white" />
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">ApnaBazar</h1>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">
+              {state.page === 'success' ? 'Password Updated!' : 'Set New Password'}
+            </CardTitle>
+            <CardDescription>
+              {state.page === 'success'
+                ? 'Redirecting you to sign in...'
+                : 'Choose a strong password for your account'}
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            {/* Loading */}
+            {state.page === 'loading' && (
+              <div className="py-8 flex flex-col items-center gap-3">
+                <Loader2 className="size-8 text-primary animate-spin" />
+                <p className="text-sm text-muted-foreground">Verifying reset link...</p>
+              </div>
+            )}
+
+            {/* Invalid link */}
+            {state.page === 'invalid' && (
+              <div className="py-6 text-center space-y-4">
+                <div className="mx-auto size-14 bg-destructive/10 rounded-full flex items-center justify-center">
+                  <AlertCircle className="size-7 text-destructive" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Link expired or invalid</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Password reset links expire after 1 hour. Please request a new one.
+                  </p>
+                </div>
+                <Button onClick={() => navigate('/auth')} className="w-full bg-gradient-brand hover:opacity-90">
+                  Back to Sign In
+                </Button>
+              </div>
+            )}
+
+            {/* Success */}
+            {state.page === 'success' && (
+              <div className="py-6 text-center space-y-4">
+                <div className="mx-auto size-14 bg-green-50 dark:bg-green-500/10 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="size-7 text-green-600" />
+                </div>
+                <p className="text-sm text-muted-foreground">Redirecting to sign in...</p>
+              </div>
+            )}
+
+            {/* Form */}
+            {state.page === 'form' && (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="size-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                    <KeyRound className="size-4 text-primary" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">Enter your new password below</p>
+                </div>
+
+                {state.error && (
+                  <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-lg">
+                    {state.error}
+                  </div>
+                )}
+
+                <div className="relative">
+                  <Input
+                    type={state.showPassword ? 'text' : 'password'}
+                    placeholder="New password (min 6 chars)"
+                    value={state.password}
+                    onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { password: e.target.value, error: '' } })}
+                    className="pr-10"
+                    autoComplete="new-password"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: 'TOGGLE', payload: 'showPassword' })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {state.showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <Input
+                    type={state.showConfirm ? 'text' : 'password'}
+                    placeholder="Confirm new password"
+                    value={state.confirm}
+                    onChange={(e) => dispatch({ type: 'SET_FIELD', payload: { confirm: e.target.value, error: '' } })}
+                    className="pr-10"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: 'TOGGLE', payload: 'showConfirm' })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {state.showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+
+                {/* Password strength hint */}
+                {state.password.length > 0 && (
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-colors ${
+                          state.password.length >= i * 3
+                            ? state.password.length >= 10 ? 'bg-green-500'
+                              : state.password.length >= 7 ? 'bg-amber-500'
+                              : 'bg-red-400'
+                            : 'bg-muted'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={state.submitting || !state.password || !state.confirm}
+                  className="w-full bg-gradient-brand hover:opacity-90 transition-opacity"
+                >
+                  {state.submitting && <Loader2 className="size-4 mr-2 animate-spin" />}
+                  Update Password
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
